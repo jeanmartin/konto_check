@@ -27,7 +27,7 @@ begin
     gem.description = %Q{Check whether a certain bic/account-no-combination can possibly be valid. It uses the C library kontocheck (see http://sourceforge.net/projects/kontocheck/) by Michael Plugge.}
     gem.email = "info@provideal.net"
     gem.homepage = "http://github.com/provideal/konto_check"
-    gem.authors = ["Provideal Systems GmbH"]
+    gem.authors = ["Provideal Systems GmbH","Michael Plugge"]
     gem.add_development_dependency "thoughtbot-shoulda", ">= 0"
     #gem.files.exclude "ext"
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings

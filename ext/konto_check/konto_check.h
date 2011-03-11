@@ -531,7 +531,7 @@ DLL_EXPORT int set_default_compression(int mode);
  */
 DLL_EXPORT int kto_check(char *x_blz,char *kto,char *lut_name);
 DLL_EXPORT int kto_check_t(char *x_blz,char *kto,char *lut_name,KTO_CHK_CTX *ctx);
-DLL_EXPORT char *kto_check_str(char *x_blz,char *kto,char *lut_name);
+DLL_EXPORT const char *kto_check_str(char *x_blz,char *kto,char *lut_name);
 DLL_EXPORT char *kto_check_str_t(char *x_blz,char *kto,char *lut_name,KTO_CHK_CTX *ctx);
 
 /* ###########################################################################
@@ -792,14 +792,14 @@ DLL_EXPORT int ipi_gen(char *zweck,char *dst,char *papier);
 DLL_EXPORT int ipi_check(char *zweck);
 
    /* Rückgabewerte in Klartext umwandeln */
-DLL_EXPORT char *kto_check_retval2txt(int retval);
-DLL_EXPORT char *kto_check_retval2txt_short(int retval);
-DLL_EXPORT char *kto_check_retval2html(int retval);
-DLL_EXPORT char *kto_check_retval2utf8(int retval);
-DLL_EXPORT char *kto_check_retval2dos(int retval);
+DLL_EXPORT const char *kto_check_retval2txt(int retval);
+DLL_EXPORT const char *kto_check_retval2txt_short(int retval);
+DLL_EXPORT const char *kto_check_retval2html(int retval);
+DLL_EXPORT const char *kto_check_retval2utf8(int retval);
+DLL_EXPORT const char *kto_check_retval2dos(int retval);
 
    /* Prüfziffer (numerisch) in String umwandeln */
-DLL_EXPORT char *pz2str(int pz,int *ret);
+DLL_EXPORT const char *pz2str(int pz,int *ret);
 
 /*
  * ######################################################################

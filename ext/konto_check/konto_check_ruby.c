@@ -300,6 +300,7 @@ static VALUE init(int argc,VALUE* argv,VALUE self)
    switch(retval){
       case OK:
       case LUT1_SET_LOADED:
+      case LUT2_PARTIAL_OK:
          break;
       default:
          RUNTIME_ERROR(retval);

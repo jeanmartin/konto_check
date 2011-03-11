@@ -228,7 +228,7 @@ static void get_params(int argc,VALUE* argv,char *arg1s,char *arg2s,int *argi,in
 }
 
 /**
- * KontoCheck::konto_check(<kto>, <blz>)
+ * KontoCheck::konto_check(<blz>, <kto>)
  *
  * check whether the given account number kto kann possibly be
  * a valid number of the bank with the bic blz.
@@ -263,6 +263,7 @@ static VALUE konto_check(int argc,VALUE* argv,VALUE self)
    //return INT2FIX(retval);
    return rb_ary_new3(2,retval>0?Qtrue:Qfalse,INT2FIX(retval));
 }
+
 
 /**
  * KontoCheck::init([lutfile[,level[,set]]])

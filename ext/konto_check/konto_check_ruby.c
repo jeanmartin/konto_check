@@ -260,8 +260,8 @@ static VALUE konto_check(int argc,VALUE* argv,VALUE self)
    if((retval=kto_check_blz(blz,kto))==LUT2_NOT_INITIALIZED || retval==MISSING_PARAMETER)RUNTIME_ERROR(retval);
 
       /* etwas unschlüssig, welche Version man nehmen sollte */
-//   return rb_ary_new3(2,retval>0?Qtrue:Qfalse,INT2FIX(retval));
-   return INT2FIX(retval);
+   //return INT2FIX(retval);
+   return rb_ary_new3(2,retval>0?Qtrue:Qfalse,INT2FIX(retval));
 }
 
 /**

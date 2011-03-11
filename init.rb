@@ -1,1 +1,1 @@
-require 'konto_check_convenience'
+require 'konto_check'

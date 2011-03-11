@@ -1339,7 +1339,7 @@ static VALUE bank_suche_ort(int argc,VALUE* argv,VALUE self)
 /**
  * The initialization method for this module
  */
-void Init_konto_check()
+void Init_konto_check_c()
 {
    KontoCheck = rb_define_module("KontoCheck");
 

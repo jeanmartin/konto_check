@@ -1,0 +1,16 @@
+important changes in version 0.0.3:
+
+   - Function konto_check: the order of parameters changed:
+     konto_check(blz,kto) instead of konto_check(kto,blz)
+
+   - The function load_bank_data will go away; instead a new function
+     konto_check::init() is provided which reads directly a lut file.
+     This function is much faster (about 7..25 times, depending on the
+     blocks to load) and has some more advantages.
+
+   - This version can be compiled for Ruby 1.8 and 1.9
+
+   - some new functions give access to all fields of the bank file:
+     bank_{name|name_kurz|plz|ort|pan|bic|nr|pz|aenderung|loeschung|nachfolge_blz}()
+
+   - for documentation, RTFS. Later some more documentation will be added ;-)

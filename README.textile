@@ -1,0 +1,54 @@
+h1. KontoCheck
+
+Check whether a certain bic/account-no-combination can possibly be valid for a German bank.
+
+It uses the C library konto_check (see http://sourceforge.net/projects/kontocheck/) by
+Michael Plugge.
+
+h2. Example
+
+An example tends to tell more than a 1000 words:
+
+<pre>
+>> require "konto_check"
+true
+
+>> KontoCheck::load_bank_data("./BLZ_20100308.txt")
+true
+
+>> KontoCheck::konto_check("52001","52250030")
+true
+
+>> KontoCheck::bank_name("10010010")
+"Postbank"
+</pre>
+
+h2. Short 'Documentation'
+
+h3. <tt>KontoCheck::konto_check(&lt;kto&gt;, &lt;blz&gt;)</tt>
+
+check whether the given account number <tt>kto</tt> ca possibly be
+a valid number of the bank with the bic <tt>blz</tt>.
+
+h3. <tt>KontoCheck::load_bank_data(&lt;datafile&gt;)</tt>
+
+initialize the underlying C library konto_check with the bank
+information from the file <tt>datafile</tt>.
+
+Internally, this file is first transformed into a LUT file and then
+read.
+
+For the datafile, use the file '<tt>blz_yyyymmdd.txt</tt>' from
+http://www.bundesbank.de/zahlungsverkehr/zahlungsverkehr_bankleitzahlen_download.php
+These files are updated every three months, so be sure to
+replace them regularly.
+
+h3. <tt>KontoCheck::bank_name(&lt;blz&gt;)</tt>
+
+gives the name of the bank as a string or nil
+if no bank with the given bic <tt>blz</tt> exists.
+
+h2. License
+
+Since the original http://www.informatik.hs-mannheim.de/konto_check/ is
+licensed under LGPL, so is this module.

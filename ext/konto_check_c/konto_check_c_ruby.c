@@ -745,8 +745,8 @@ static VALUE bank_name(int argc,VALUE* argv,VALUE self)
 
    get_params(argc,argv,blz,NULL,&filiale,1);
    name=lut_name(blz,filiale,&retval);
-   if(retval==LUT2_BLZ_NOT_INITIALIZED || retval==LUT2_NAME_NOT_INITIALIZED)RUNTIME_ERROR(retval);
-   return rb_ary_new3(2,retval<=0?Qnil:rb_str_new2(name),INT2FIX(retval));
+   if(retval!=OK)RUNTIME_ERROR(retval);
+   return retval<=0?Qnil:rb_str_new2(name);
 }
 
 /**
@@ -770,8 +770,8 @@ static VALUE bank_name_kurz(int argc,VALUE* argv,VALUE self)
 
    get_params(argc,argv,blz,NULL,&filiale,1);
    name=lut_name_kurz(blz,filiale,&retval);
-   if(retval==LUT2_BLZ_NOT_INITIALIZED || retval==LUT2_NAME_KURZ_NOT_INITIALIZED)RUNTIME_ERROR(retval);
-   return rb_ary_new3(2,retval<=0?Qnil:rb_str_new2(name),INT2FIX(retval));
+   if(retval!=OK)RUNTIME_ERROR(retval);
+   return retval<=0?Qnil:rb_str_new2(name);
 }
 
 /**

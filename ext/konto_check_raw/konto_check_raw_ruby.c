@@ -745,8 +745,8 @@ static VALUE bank_name(int argc,VALUE* argv,VALUE self)
 
    get_params(argc,argv,blz,NULL,&filiale,1);
    name=lut_name(blz,filiale,&retval);
-   if(retval!=OK)RUNTIME_ERROR(retval);
-   return retval<=0?Qnil:rb_str_new2(name);
+   if(retval==LUT2_BLZ_NOT_INITIALIZED || retval==LUT2_NAME_NOT_INITIALIZED)RUNTIME_ERROR(retval);
+   return rb_ary_new3(2,retval<=0?Qnil:rb_str_new2(name),INT2FIX(retval));
 }
 
 /**
@@ -770,8 +770,8 @@ static VALUE bank_name_kurz(int argc,VALUE* argv,VALUE self)
 
    get_params(argc,argv,blz,NULL,&filiale,1);
    name=lut_name_kurz(blz,filiale,&retval);
-   if(retval!=OK)RUNTIME_ERROR(retval);
-   return retval<=0?Qnil:rb_str_new2(name);
+   if(retval==LUT2_BLZ_NOT_INITIALIZED || retval==LUT2_NAME_KURZ_NOT_INITIALIZED)RUNTIME_ERROR(retval);
+   return rb_ary_new3(2,retval<=0?Qnil:rb_str_new2(name),INT2FIX(retval));
 }
 
 /**
@@ -1339,9 +1339,9 @@ static VALUE bank_suche_ort(int argc,VALUE* argv,VALUE self)
 /**
  * The initialization method for this module
  */
-void Init_konto_check_c()
+void Init_konto_check_raw()
 {
-   KontoCheck = rb_define_module("KontoCheck");
+   KontoCheck = rb_define_module("KontoCheckRaw");
 
       /* die Parameteranzahl -1 bei den folgenden Funktionen meint eine variable
        * Anzahl Parameter; die genaue Anzahl wird bei der Funktion rb_scan_args()

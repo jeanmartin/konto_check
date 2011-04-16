@@ -40,7 +40,7 @@
 #include <stdio.h>
 #include "konto_check.h"
 
-   /* some Ruby 1.8/1.9 compatibility definitions */
+   /* Ruby 1.8/1.9 compatibility definitions */
 #ifndef RSTRING_PTR
 #define RSTRING_LEN(x) (RSTRING(x)->len)
 #define RSTRING_PTR(x) (RSTRING(x)->ptr)
@@ -51,10 +51,11 @@
 #define RUBY_T_FLOAT  T_FLOAT
 #define RUBY_T_FIXNUM T_FIXNUM
 #define RUBY_T_BIGNUM T_BIGNUM
+#define RUBY_T_ARRAY  T_ARRAY
 #endif
 
 #define RUNTIME_ERROR(error) do{ \
-   snprintf(error_msg,511,"KontoCheck: %s %s",kto_check_retval2txt_short(error),kto_check_retval2txt(error)); \
+   snprintf(error_msg,511,"KontoCheck::%s, %s",kto_check_retval2txt_short(error),kto_check_retval2txt(error)); \
    rb_raise(rb_eRuntimeError,error_msg); \
 }while(0)
 
@@ -116,10 +117,31 @@ static void get_params_file(int argc,VALUE* argv,char *arg1s,int *arg1i,int *arg
 static void get_params_int(int argc,VALUE* argv,int *arg1,int *arg2)
 {
    char buffer[16];
-   int len;
-   VALUE arg1_rb,arg2_rb;
+   int len,cnt;
+   VALUE arg1_rb,arg2_rb,*arr_ptr;
 
    rb_scan_args(argc,argv,"11",&arg1_rb,&arg2_rb);
+
+         /* Falls als erster Parameter ein Array übergeben wird, wird der erste
+          * Wert werden als Minimal- und der zweite als Maximalwert genommen.
+          */
+   if(TYPE(arg1_rb)==RUBY_T_ARRAY){
+      cnt=RARRAY_LEN(arg1_rb);      /* Anzahl Werte */
+      arr_ptr=RARRAY_PTR(arg1_rb);  /* Pointer auf die Array-Daten */
+      switch(cnt){
+         case 0:
+            arg1_rb=arg2_rb=Qnil;
+            break;
+         case 1:
+            arg1_rb=*arr_ptr;
+            arg2_rb=Qnil;
+            break;
+         default:
+            arg1_rb=arr_ptr[0];
+            arg2_rb=arr_ptr[1];
+            break;
+      }
+   }
 
    if(NIL_P(arg1_rb))
       *arg1=0;
@@ -143,7 +165,6 @@ static void get_params_int(int argc,VALUE* argv,int *arg1,int *arg2)
    }
    else
       *arg2=NUM2INT(arg2_rb);
-   return;
 }
 
 /**
@@ -250,7 +271,6 @@ static void get_params(int argc,VALUE* argv,char *arg1s,char *arg2s,int *argi,in
  *    OK                      "ok"
  *    OK_NO_CHK               "ok, ohne Prüfung"
  */
-
 static VALUE konto_check(int argc,VALUE* argv,VALUE self)
 {
    char kto[16],blz[16],error_msg[512];
@@ -258,9 +278,6 @@ static VALUE konto_check(int argc,VALUE* argv,VALUE self)
 
    get_params(argc,argv,blz,kto,NULL,2);
    if((retval=kto_check_blz(blz,kto))==LUT2_NOT_INITIALIZED || retval==MISSING_PARAMETER)RUNTIME_ERROR(retval);
-
-      /* etwas unschlüssig, welche Version man nehmen sollte */
-   //return INT2FIX(retval);
    return rb_ary_new3(2,retval>0?Qtrue:Qfalse,INT2FIX(retval));
 }
 
@@ -345,7 +362,7 @@ static VALUE free_rb(VALUE self)
 static VALUE generate_lutfile_rb(int argc,VALUE* argv,VALUE self)
 {
    char input_name[FILENAME_MAX+1],output_name[FILENAME_MAX+1];
-   char user_info[256],gueltigkeit[20],error_msg[512];
+   char user_info[256],gueltigkeit[20],buffer[16],error_msg[512];
    int retval,felder,filialen,set,len;
    VALUE input_name_rb,output_name_rb,user_info_rb,
          gueltigkeit_rb,felder_rb,filialen_rb,set_rb;
@@ -393,16 +410,34 @@ static VALUE generate_lutfile_rb(int argc,VALUE* argv,VALUE self)
 
    if(NIL_P(felder_rb))
       felder=DEFAULT_LUT_FIELDS_NUM;
+   else if(TYPE(felder_rb)==RUBY_T_STRING){
+      strncpy(buffer,RSTRING_PTR(felder_rb),15);
+      if((len=RSTRING_LEN(felder_rb))>15)len=15;
+      *(buffer+len)=0;
+      felder=atoi(buffer);
+   }
    else
       felder=NUM2INT(felder_rb);
 
    if(NIL_P(filialen_rb))
       filialen=0;
+   else if(TYPE(filialen_rb)==RUBY_T_STRING){
+      strncpy(buffer,RSTRING_PTR(filialen_rb),15);
+      if((len=RSTRING_LEN(felder_rb))>15)len=15;
+      *(buffer+len)=0;
+      filialen=atoi(buffer);
+   }
    else
       filialen=NUM2INT(filialen_rb);
 
    if(NIL_P(set_rb))
       set=0;
+   else if(TYPE(set_rb)==RUBY_T_STRING){
+      strncpy(buffer,RSTRING_PTR(set_rb),15);
+      if((len=RSTRING_LEN(set_rb))>15)len=15;
+      *(buffer+len)=0;
+      set=atoi(buffer);
+   }
    else
       set=NUM2INT(set_rb);
 
@@ -865,19 +900,20 @@ static VALUE bank_pz(int argc,VALUE* argv,VALUE self)
  */
 static VALUE bank_bic(int argc,VALUE* argv,VALUE self)
 {
-   char blz[16],*bic,error_msg[512];
+   char blz[16],*ptr,error_msg[512];
    int retval,filiale;
 
-   get_params(argc,argv,NULL,blz,&filiale,1);
-   bic=lut_bic(blz,filiale,&retval);
+   get_params(argc,argv,blz,NULL,&filiale,1);
+   ptr=lut_bic(blz,filiale,&retval);
    if(retval==LUT2_BLZ_NOT_INITIALIZED || retval==LUT2_BIC_NOT_INITIALIZED)RUNTIME_ERROR(retval);
-   return rb_ary_new3(2,retval<=0?Qnil:rb_str_new2(bic),INT2FIX(retval));
+   return rb_ary_new3(2,retval<=0?Qnil:rb_str_new2(ptr),INT2FIX(retval));
 }
 
 /**
  * KontoCheck::bank_aenderung(<blz> [,filiale])
  *
- * return the 'Änderung' flag of a bank
+ * return the 'Änderung' flag of a bank (as string):
+ *    A Addition, M Modified, U Unchanged, D Deletion.
  *
  * possible return values (and short description):
  *
@@ -890,19 +926,20 @@ static VALUE bank_bic(int argc,VALUE* argv,VALUE self)
  */
 static VALUE bank_aenderung(int argc,VALUE* argv,VALUE self)
 {
-   char blz[16],error_msg[512];
-   int retval,aenderung,filiale;
+   char blz[16],aenderung[2],error_msg[512];
+   int retval,filiale;
 
    get_params(argc,argv,blz,NULL,&filiale,1);
-   aenderung=lut_aenderung(blz,filiale,&retval);
+   *aenderung=lut_aenderung(blz,filiale,&retval);
+   aenderung[1]=0;
    if(retval==LUT2_BLZ_NOT_INITIALIZED || retval==LUT2_AENDERUNG_NOT_INITIALIZED)RUNTIME_ERROR(retval);
-   return rb_ary_new3(2,retval<=0?Qnil:INT2FIX(aenderung),INT2FIX(retval));
+   return rb_ary_new3(2,retval<=0?Qnil:rb_str_new2(aenderung),INT2FIX(retval));
 }
 
 /**
  * KontoCheck::bank_loeschung(<blz> [,filiale])
  *
- * return the 'Löschung' flag of a bank
+ * return the 'Löschung' flag of a bank as int: 0 or 1
  *
  * possible return values (and short description):
  *
@@ -919,7 +956,7 @@ static VALUE bank_loeschung(int argc,VALUE* argv,VALUE self)
    int retval,loeschung,filiale;
 
    get_params(argc,argv,blz,NULL,&filiale,1);
-   loeschung=lut_loeschung(blz,filiale,&retval);
+   loeschung=lut_loeschung(blz,filiale,&retval)-'0';
    if(retval==LUT2_BLZ_NOT_INITIALIZED || retval==LUT2_LOESCHUNG_NOT_INITIALIZED)RUNTIME_ERROR(retval);
    return rb_ary_new3(2,retval<=0?Qnil:INT2FIX(loeschung),INT2FIX(retval));
 }
@@ -1085,9 +1122,9 @@ static VALUE bank_nr(int argc,VALUE* argv,VALUE self)
  */
 
 /**
- * KontoCheck::bank_suche_bic(<suchname>)
+ * KontoCheck::bank_suche_bic(<search_bic>)
  *
- * return the sequence number of a bank (internal field of BLZ file)
+ * find all banks with a given bic
  *
  * possible return values (and short description):
  *
@@ -1106,8 +1143,8 @@ static VALUE bank_suche_bic(int argc,VALUE* argv,VALUE self)
 
    get_params(argc,argv,such_name,NULL,NULL,3);
    retval=lut_suche_bic(such_name,&anzahl,&start_idx,&zweigstelle,&base_name,&blz_base);
-   if(retval<0 && retval!=KEY_NOT_FOUND)RUNTIME_ERROR(retval);
    if(retval==KEY_NOT_FOUND)return rb_ary_new3(5,Qnil,Qnil,Qnil,INT2FIX(retval),INT2FIX(0));
+   if(retval<0)RUNTIME_ERROR(retval);
    ret_suche=rb_ary_new2(anzahl);
    ret_blz=rb_ary_new2(anzahl);
    ret_idx=rb_ary_new2(anzahl);
@@ -1121,9 +1158,9 @@ static VALUE bank_suche_bic(int argc,VALUE* argv,VALUE self)
 }
 
 /**
- * KontoCheck::bank_suche_namen(<suchname>)
+ * KontoCheck::bank_suche_namen(<name>)
  *
- * return the sequence number of a bank (internal field of BLZ file)
+ * find all banks with a given name
  *
  * possible return values (and short description):
  *
@@ -1142,8 +1179,8 @@ static VALUE bank_suche_namen(int argc,VALUE* argv,VALUE self)
 
    get_params(argc,argv,such_name,NULL,NULL,3);
    retval=lut_suche_namen(such_name,&anzahl,&start_idx,&zweigstelle,&base_name,&blz_base);
-   if(retval<0 && retval!=KEY_NOT_FOUND)RUNTIME_ERROR(retval);
    if(retval==KEY_NOT_FOUND)return rb_ary_new3(5,Qnil,Qnil,Qnil,INT2FIX(retval),INT2FIX(0));
+   if(retval<0)RUNTIME_ERROR(retval);
    ret_suche=rb_ary_new2(anzahl);
    ret_blz=rb_ary_new2(anzahl);
    ret_idx=rb_ary_new2(anzahl);
@@ -1157,9 +1194,9 @@ static VALUE bank_suche_namen(int argc,VALUE* argv,VALUE self)
 }
 
 /**
- * KontoCheck::bank_suche_namen_kurz(<suchname>)
+ * KontoCheck::bank_suche_namen_kurz(<short_name>)
  *
- * return the sequence number of a bank (internal field of BLZ file)
+ * find all banks with a given short name
  *
  * possible return values (and short description):
  *
@@ -1178,8 +1215,8 @@ static VALUE bank_suche_namen_kurz(int argc,VALUE* argv,VALUE self)
 
    get_params(argc,argv,such_name,NULL,NULL,3);
    retval=lut_suche_namen_kurz(such_name,&anzahl,&start_idx,&zweigstelle,&base_name,&blz_base);
-   if(retval<0 && retval!=KEY_NOT_FOUND)RUNTIME_ERROR(retval);
    if(retval==KEY_NOT_FOUND)return rb_ary_new3(5,Qnil,Qnil,Qnil,INT2FIX(retval),INT2FIX(0));
+   if(retval<0)RUNTIME_ERROR(retval);
    ret_suche=rb_ary_new2(anzahl);
    ret_blz=rb_ary_new2(anzahl);
    ret_idx=rb_ary_new2(anzahl);
@@ -1193,9 +1230,9 @@ static VALUE bank_suche_namen_kurz(int argc,VALUE* argv,VALUE self)
 }
 
 /**
- * KontoCheck::bank_suche_plz(<suchname>)
+ * KontoCheck::bank_suche_plz(<plz1>[, plz2])
  *
- * return the sequence number of a bank (internal field of BLZ file)
+ * find all banks with plz between plz1 and plz2
  *
  * possible return values (and short description):
  *
@@ -1214,8 +1251,8 @@ static VALUE bank_suche_plz(int argc,VALUE* argv,VALUE self)
 
    get_params_int(argc,argv,&such1,&such2);
    retval=lut_suche_plz(such1,such2,&anzahl,&start_idx,&zweigstelle,&base_name,&blz_base);
-   if(retval<0 && retval!=KEY_NOT_FOUND)RUNTIME_ERROR(retval);
    if(retval==KEY_NOT_FOUND)return rb_ary_new3(5,Qnil,Qnil,Qnil,INT2FIX(retval),INT2FIX(0));
+   if(retval<0)RUNTIME_ERROR(retval);
    ret_suche=rb_ary_new2(anzahl);
    ret_blz=rb_ary_new2(anzahl);
    ret_idx=rb_ary_new2(anzahl);
@@ -1229,9 +1266,9 @@ static VALUE bank_suche_plz(int argc,VALUE* argv,VALUE self)
 }
 
 /**
- * KontoCheck::bank_suche_pz(<suchname>)
+ * KontoCheck::bank_suche_pz(<pz1>[, pz2])
  *
- * return the sequence number of a bank (internal field of BLZ file)
+ * find all banks with check method between pz1 and pz2
  *
  * possible return values (and short description):
  *
@@ -1250,8 +1287,8 @@ static VALUE bank_suche_pz(int argc,VALUE* argv,VALUE self)
 
    get_params_int(argc,argv,&such1,&such2);
    retval=lut_suche_pz(such1,such2,&anzahl,&start_idx,&zweigstelle,&base_name,&blz_base);
-   if(retval<0 && retval!=KEY_NOT_FOUND)RUNTIME_ERROR(retval);
    if(retval==KEY_NOT_FOUND)return rb_ary_new3(5,Qnil,Qnil,Qnil,INT2FIX(retval),INT2FIX(0));
+   if(retval<0)RUNTIME_ERROR(retval);
    ret_suche=rb_ary_new2(anzahl);
    ret_blz=rb_ary_new2(anzahl);
    ret_idx=rb_ary_new2(anzahl);
@@ -1265,9 +1302,9 @@ static VALUE bank_suche_pz(int argc,VALUE* argv,VALUE self)
 }
 
 /**
- * KontoCheck::bank_suche_blz(<suchname>)
+ * KontoCheck::bank_suche_blz(<blz1>[, blz2])
  *
- * return the sequence number of a bank (internal field of BLZ file)
+ * find all banks with bic between blz1 and blz2
  *
  * possible return values (and short description):
  *
@@ -1286,8 +1323,8 @@ static VALUE bank_suche_blz(int argc,VALUE* argv,VALUE self)
 
    get_params_int(argc,argv,&such1,&such2);
    retval=lut_suche_blz(such1,such2,&anzahl,&start_idx,&zweigstelle,&base_name,&blz_base);
-   if(retval<0 && retval!=KEY_NOT_FOUND)RUNTIME_ERROR(retval);
    if(retval==KEY_NOT_FOUND)return rb_ary_new3(5,Qnil,Qnil,Qnil,INT2FIX(retval),INT2FIX(0));
+   if(retval<0)RUNTIME_ERROR(retval);
    ret_suche=rb_ary_new2(anzahl);
    ret_blz=rb_ary_new2(anzahl);
    ret_idx=rb_ary_new2(anzahl);
@@ -1301,9 +1338,9 @@ static VALUE bank_suche_blz(int argc,VALUE* argv,VALUE self)
 }
 
 /**
- * KontoCheck::bank_suche_ort(<suchname>)
+ * KontoCheck::bank_suche_ort(<suchort>)
  *
- * return the sequence number of a bank (internal field of BLZ file)
+ * find all banks in a given location
  *
  * possible return values (and short description):
  *
@@ -1322,8 +1359,8 @@ static VALUE bank_suche_ort(int argc,VALUE* argv,VALUE self)
 
    get_params(argc,argv,such_name,NULL,NULL,3);
    retval=lut_suche_ort(such_name,&anzahl,&start_idx,&zweigstelle,&base_name,&blz_base);
-   if(retval<0 && retval!=KEY_NOT_FOUND)RUNTIME_ERROR(retval);
    if(retval==KEY_NOT_FOUND)return rb_ary_new3(5,Qnil,Qnil,Qnil,INT2FIX(retval),INT2FIX(0));
+   if(retval<0)RUNTIME_ERROR(retval);
    ret_suche=rb_ary_new2(anzahl);
    ret_blz=rb_ary_new2(anzahl);
    ret_idx=rb_ary_new2(anzahl);
@@ -1371,8 +1408,7 @@ void Init_konto_check_raw()
        *
        * Es wäre zu testen, ob dieses Verhalten bei älteren Versionen gilt;
        * dann müßte man u.U. eine entsprechende Verzweigung einbauen. Bei den
-       * aktuellen Varianten (Ruby 1.8.6 und 1.9.2) funktioniert diese
-       * Variante.
+       * aktuellen Varianten (Ruby 1.8.6 und 1.9.2) funktioniert diese Variante.
        */
    rb_define_module_function(KontoCheck,"init",init,-1);
    rb_define_module_function(KontoCheck,"free",free_rb,0);
@@ -1410,5 +1446,132 @@ void Init_konto_check_raw()
    rb_define_module_function(KontoCheck,"bank_suche_plz",bank_suche_plz,-1);
    rb_define_module_function(KontoCheck,"bank_suche_pz",bank_suche_pz,-1);
    rb_define_module_function(KontoCheck,"load_bank_data",load_bank_data,1);
-}
 
+      /* Rückgabewerte der konto_check Bibliothek */
+   rb_define_const(KontoCheck,"KTO_CHECK_UNSUPPORTED_COMPRESSION",INT2FIX(KTO_CHECK_UNSUPPORTED_COMPRESSION));
+   rb_define_const(KontoCheck,"KTO_CHECK_INVALID_COMPRESSION_LIB",INT2FIX(KTO_CHECK_INVALID_COMPRESSION_LIB));
+   rb_define_const(KontoCheck,"OK_UNTERKONTO_ATTACHED",INT2FIX(OK_UNTERKONTO_ATTACHED));
+   rb_define_const(KontoCheck,"KTO_CHECK_DEFAULT_BLOCK_INVALID",INT2FIX(KTO_CHECK_DEFAULT_BLOCK_INVALID));
+   rb_define_const(KontoCheck,"KTO_CHECK_DEFAULT_BLOCK_FULL",INT2FIX(KTO_CHECK_DEFAULT_BLOCK_FULL));
+   rb_define_const(KontoCheck,"KTO_CHECK_NO_DEFAULT_BLOCK",INT2FIX(KTO_CHECK_NO_DEFAULT_BLOCK));
+   rb_define_const(KontoCheck,"KTO_CHECK_KEY_NOT_FOUND",INT2FIX(KTO_CHECK_KEY_NOT_FOUND));
+   rb_define_const(KontoCheck,"LUT2_NO_LONGER_VALID_BETTER",INT2FIX(LUT2_NO_LONGER_VALID_BETTER));
+   rb_define_const(KontoCheck,"DTA_SRC_KTO_DIFFERENT",INT2FIX(DTA_SRC_KTO_DIFFERENT));
+   rb_define_const(KontoCheck,"DTA_SRC_BLZ_DIFFERENT",INT2FIX(DTA_SRC_BLZ_DIFFERENT));
+   rb_define_const(KontoCheck,"DTA_CR_LF_IN_FILE",INT2FIX(DTA_CR_LF_IN_FILE));
+   rb_define_const(KontoCheck,"DTA_INVALID_C_EXTENSION",INT2FIX(DTA_INVALID_C_EXTENSION));
+   rb_define_const(KontoCheck,"DTA_FOUND_SET_A_NOT_C",INT2FIX(DTA_FOUND_SET_A_NOT_C));
+   rb_define_const(KontoCheck,"DTA_FOUND_SET_E_NOT_C",INT2FIX(DTA_FOUND_SET_E_NOT_C));
+   rb_define_const(KontoCheck,"DTA_FOUND_SET_C_NOT_EXTENSION",INT2FIX(DTA_FOUND_SET_C_NOT_EXTENSION));
+   rb_define_const(KontoCheck,"DTA_FOUND_SET_E_NOT_EXTENSION",INT2FIX(DTA_FOUND_SET_E_NOT_EXTENSION));
+   rb_define_const(KontoCheck,"DTA_INVALID_EXTENSION_COUNT",INT2FIX(DTA_INVALID_EXTENSION_COUNT));
+   rb_define_const(KontoCheck,"DTA_INVALID_NUM",INT2FIX(DTA_INVALID_NUM));
+   rb_define_const(KontoCheck,"DTA_INVALID_CHARS",INT2FIX(DTA_INVALID_CHARS));
+   rb_define_const(KontoCheck,"DTA_CURRENCY_NOT_EURO",INT2FIX(DTA_CURRENCY_NOT_EURO));
+   rb_define_const(KontoCheck,"DTA_EMPTY_AMOUNT",INT2FIX(DTA_EMPTY_AMOUNT));
+   rb_define_const(KontoCheck,"DTA_INVALID_TEXT_KEY",INT2FIX(DTA_INVALID_TEXT_KEY));
+   rb_define_const(KontoCheck,"DTA_EMPTY_STRING",INT2FIX(DTA_EMPTY_STRING));
+   rb_define_const(KontoCheck,"DTA_MARKER_A_NOT_FOUND",INT2FIX(DTA_MARKER_A_NOT_FOUND));
+   rb_define_const(KontoCheck,"DTA_MARKER_C_NOT_FOUND",INT2FIX(DTA_MARKER_C_NOT_FOUND));
+   rb_define_const(KontoCheck,"DTA_MARKER_E_NOT_FOUND",INT2FIX(DTA_MARKER_E_NOT_FOUND));
+   rb_define_const(KontoCheck,"DTA_INVALID_SET_C_LEN",INT2FIX(DTA_INVALID_SET_C_LEN));
+   rb_define_const(KontoCheck,"DTA_INVALID_SET_LEN",INT2FIX(DTA_INVALID_SET_LEN));
+   rb_define_const(KontoCheck,"DTA_WAERUNG_NOT_EURO",INT2FIX(DTA_WAERUNG_NOT_EURO));
+   rb_define_const(KontoCheck,"DTA_INVALID_ISSUE_DATE",INT2FIX(DTA_INVALID_ISSUE_DATE));
+   rb_define_const(KontoCheck,"DTA_INVALID_DATE",INT2FIX(DTA_INVALID_DATE));
+   rb_define_const(KontoCheck,"DTA_FORMAT_ERROR",INT2FIX(DTA_FORMAT_ERROR));
+   rb_define_const(KontoCheck,"DTA_FILE_WITH_ERRORS",INT2FIX(DTA_FILE_WITH_ERRORS));
+   rb_define_const(KontoCheck,"INVALID_SEARCH_RANGE",INT2FIX(INVALID_SEARCH_RANGE));
+   rb_define_const(KontoCheck,"KEY_NOT_FOUND",INT2FIX(KEY_NOT_FOUND));
+   rb_define_const(KontoCheck,"BAV_FALSE",INT2FIX(BAV_FALSE));
+   rb_define_const(KontoCheck,"LUT2_NO_USER_BLOCK",INT2FIX(LUT2_NO_USER_BLOCK));
+   rb_define_const(KontoCheck,"INVALID_SET",INT2FIX(INVALID_SET));
+   rb_define_const(KontoCheck,"NO_GERMAN_BIC",INT2FIX(NO_GERMAN_BIC));
+   rb_define_const(KontoCheck,"IPI_CHECK_INVALID_LENGTH",INT2FIX(IPI_CHECK_INVALID_LENGTH));
+   rb_define_const(KontoCheck,"IPI_INVALID_CHARACTER",INT2FIX(IPI_INVALID_CHARACTER));
+   rb_define_const(KontoCheck,"IPI_INVALID_LENGTH",INT2FIX(IPI_INVALID_LENGTH));
+   rb_define_const(KontoCheck,"LUT1_FILE_USED",INT2FIX(LUT1_FILE_USED));
+   rb_define_const(KontoCheck,"MISSING_PARAMETER",INT2FIX(MISSING_PARAMETER));
+   rb_define_const(KontoCheck,"IBAN2BIC_ONLY_GERMAN",INT2FIX(IBAN2BIC_ONLY_GERMAN));
+   rb_define_const(KontoCheck,"IBAN_OK_KTO_NOT",INT2FIX(IBAN_OK_KTO_NOT));
+   rb_define_const(KontoCheck,"KTO_OK_IBAN_NOT",INT2FIX(KTO_OK_IBAN_NOT));
+   rb_define_const(KontoCheck,"TOO_MANY_SLOTS",INT2FIX(TOO_MANY_SLOTS));
+   rb_define_const(KontoCheck,"INIT_FATAL_ERROR",INT2FIX(INIT_FATAL_ERROR));
+   rb_define_const(KontoCheck,"INCREMENTAL_INIT_NEEDS_INFO",INT2FIX(INCREMENTAL_INIT_NEEDS_INFO));
+   rb_define_const(KontoCheck,"INCREMENTAL_INIT_FROM_DIFFERENT_FILE",INT2FIX(INCREMENTAL_INIT_FROM_DIFFERENT_FILE));
+   rb_define_const(KontoCheck,"DEBUG_ONLY_FUNCTION",INT2FIX(DEBUG_ONLY_FUNCTION));
+   rb_define_const(KontoCheck,"LUT2_INVALID",INT2FIX(LUT2_INVALID));
+   rb_define_const(KontoCheck,"LUT2_NOT_YET_VALID",INT2FIX(LUT2_NOT_YET_VALID));
+   rb_define_const(KontoCheck,"LUT2_NO_LONGER_VALID",INT2FIX(LUT2_NO_LONGER_VALID));
+   rb_define_const(KontoCheck,"LUT2_GUELTIGKEIT_SWAPPED",INT2FIX(LUT2_GUELTIGKEIT_SWAPPED));
+   rb_define_const(KontoCheck,"LUT2_INVALID_GUELTIGKEIT",INT2FIX(LUT2_INVALID_GUELTIGKEIT));
+   rb_define_const(KontoCheck,"LUT2_INDEX_OUT_OF_RANGE",INT2FIX(LUT2_INDEX_OUT_OF_RANGE));
+   rb_define_const(KontoCheck,"LUT2_INIT_IN_PROGRESS",INT2FIX(LUT2_INIT_IN_PROGRESS));
+   rb_define_const(KontoCheck,"LUT2_BLZ_NOT_INITIALIZED",INT2FIX(LUT2_BLZ_NOT_INITIALIZED));
+   rb_define_const(KontoCheck,"LUT2_FILIALEN_NOT_INITIALIZED",INT2FIX(LUT2_FILIALEN_NOT_INITIALIZED));
+   rb_define_const(KontoCheck,"LUT2_NAME_NOT_INITIALIZED",INT2FIX(LUT2_NAME_NOT_INITIALIZED));
+   rb_define_const(KontoCheck,"LUT2_PLZ_NOT_INITIALIZED",INT2FIX(LUT2_PLZ_NOT_INITIALIZED));
+   rb_define_const(KontoCheck,"LUT2_ORT_NOT_INITIALIZED",INT2FIX(LUT2_ORT_NOT_INITIALIZED));
+   rb_define_const(KontoCheck,"LUT2_NAME_KURZ_NOT_INITIALIZED",INT2FIX(LUT2_NAME_KURZ_NOT_INITIALIZED));
+   rb_define_const(KontoCheck,"LUT2_PAN_NOT_INITIALIZED",INT2FIX(LUT2_PAN_NOT_INITIALIZED));
+   rb_define_const(KontoCheck,"LUT2_BIC_NOT_INITIALIZED",INT2FIX(LUT2_BIC_NOT_INITIALIZED));
+   rb_define_const(KontoCheck,"LUT2_PZ_NOT_INITIALIZED",INT2FIX(LUT2_PZ_NOT_INITIALIZED));
+   rb_define_const(KontoCheck,"LUT2_NR_NOT_INITIALIZED",INT2FIX(LUT2_NR_NOT_INITIALIZED));
+   rb_define_const(KontoCheck,"LUT2_AENDERUNG_NOT_INITIALIZED",INT2FIX(LUT2_AENDERUNG_NOT_INITIALIZED));
+   rb_define_const(KontoCheck,"LUT2_LOESCHUNG_NOT_INITIALIZED",INT2FIX(LUT2_LOESCHUNG_NOT_INITIALIZED));
+   rb_define_const(KontoCheck,"LUT2_NACHFOLGE_BLZ_NOT_INITIALIZED",INT2FIX(LUT2_NACHFOLGE_BLZ_NOT_INITIALIZED));
+   rb_define_const(KontoCheck,"LUT2_NOT_INITIALIZED",INT2FIX(LUT2_NOT_INITIALIZED));
+   rb_define_const(KontoCheck,"LUT2_FILIALEN_MISSING",INT2FIX(LUT2_FILIALEN_MISSING));
+   rb_define_const(KontoCheck,"LUT2_PARTIAL_OK",INT2FIX(LUT2_PARTIAL_OK));
+   rb_define_const(KontoCheck,"LUT2_Z_BUF_ERROR",INT2FIX(LUT2_Z_BUF_ERROR));
+   rb_define_const(KontoCheck,"LUT2_Z_MEM_ERROR",INT2FIX(LUT2_Z_MEM_ERROR));
+   rb_define_const(KontoCheck,"LUT2_Z_DATA_ERROR",INT2FIX(LUT2_Z_DATA_ERROR));
+   rb_define_const(KontoCheck,"LUT2_BLOCK_NOT_IN_FILE",INT2FIX(LUT2_BLOCK_NOT_IN_FILE));
+   rb_define_const(KontoCheck,"LUT2_DECOMPRESS_ERROR",INT2FIX(LUT2_DECOMPRESS_ERROR));
+   rb_define_const(KontoCheck,"LUT2_COMPRESS_ERROR",INT2FIX(LUT2_COMPRESS_ERROR));
+   rb_define_const(KontoCheck,"LUT2_FILE_CORRUPTED",INT2FIX(LUT2_FILE_CORRUPTED));
+   rb_define_const(KontoCheck,"LUT2_NO_SLOT_FREE",INT2FIX(LUT2_NO_SLOT_FREE));
+   rb_define_const(KontoCheck,"UNDEFINED_SUBMETHOD",INT2FIX(UNDEFINED_SUBMETHOD));
+   rb_define_const(KontoCheck,"EXCLUDED_AT_COMPILETIME",INT2FIX(EXCLUDED_AT_COMPILETIME));
+   rb_define_const(KontoCheck,"INVALID_LUT_VERSION",INT2FIX(INVALID_LUT_VERSION));
+   rb_define_const(KontoCheck,"INVALID_PARAMETER_STELLE1",INT2FIX(INVALID_PARAMETER_STELLE1));
+   rb_define_const(KontoCheck,"INVALID_PARAMETER_COUNT",INT2FIX(INVALID_PARAMETER_COUNT));
+   rb_define_const(KontoCheck,"INVALID_PARAMETER_PRUEFZIFFER",INT2FIX(INVALID_PARAMETER_PRUEFZIFFER));
+   rb_define_const(KontoCheck,"INVALID_PARAMETER_WICHTUNG",INT2FIX(INVALID_PARAMETER_WICHTUNG));
+   rb_define_const(KontoCheck,"INVALID_PARAMETER_METHODE",INT2FIX(INVALID_PARAMETER_METHODE));
+   rb_define_const(KontoCheck,"LIBRARY_INIT_ERROR",INT2FIX(LIBRARY_INIT_ERROR));
+   rb_define_const(KontoCheck,"LUT_CRC_ERROR",INT2FIX(LUT_CRC_ERROR));
+   rb_define_const(KontoCheck,"FALSE_GELOESCHT",INT2FIX(FALSE_GELOESCHT));
+   rb_define_const(KontoCheck,"OK_NO_CHK_GELOESCHT",INT2FIX(OK_NO_CHK_GELOESCHT));
+   rb_define_const(KontoCheck,"OK_GELOESCHT",INT2FIX(OK_GELOESCHT));
+   rb_define_const(KontoCheck,"BLZ_GELOESCHT",INT2FIX(BLZ_GELOESCHT));
+   rb_define_const(KontoCheck,"INVALID_BLZ_FILE",INT2FIX(INVALID_BLZ_FILE));
+   rb_define_const(KontoCheck,"LIBRARY_IS_NOT_THREAD_SAFE",INT2FIX(LIBRARY_IS_NOT_THREAD_SAFE));
+   rb_define_const(KontoCheck,"FATAL_ERROR",INT2FIX(FATAL_ERROR));
+   rb_define_const(KontoCheck,"INVALID_KTO_LENGTH",INT2FIX(INVALID_KTO_LENGTH));
+   rb_define_const(KontoCheck,"FILE_WRITE_ERROR",INT2FIX(FILE_WRITE_ERROR));
+   rb_define_const(KontoCheck,"FILE_READ_ERROR",INT2FIX(FILE_READ_ERROR));
+   rb_define_const(KontoCheck,"ERROR_MALLOC",INT2FIX(ERROR_MALLOC));
+   rb_define_const(KontoCheck,"NO_BLZ_FILE",INT2FIX(NO_BLZ_FILE));
+   rb_define_const(KontoCheck,"INVALID_LUT_FILE",INT2FIX(INVALID_LUT_FILE));
+   rb_define_const(KontoCheck,"NO_LUT_FILE",INT2FIX(NO_LUT_FILE));
+   rb_define_const(KontoCheck,"INVALID_BLZ_LENGTH",INT2FIX(INVALID_BLZ_LENGTH));
+   rb_define_const(KontoCheck,"INVALID_BLZ",INT2FIX(INVALID_BLZ));
+   rb_define_const(KontoCheck,"INVALID_KTO",INT2FIX(INVALID_KTO));
+   rb_define_const(KontoCheck,"NOT_IMPLEMENTED",INT2FIX(NOT_IMPLEMENTED));
+   rb_define_const(KontoCheck,"NOT_DEFINED",INT2FIX(NOT_DEFINED));
+   rb_define_const(KontoCheck,"FALSE",INT2FIX(FALSE));
+   rb_define_const(KontoCheck,"OK",INT2FIX(OK));
+   rb_define_const(KontoCheck,"OK_NO_CHK",INT2FIX(OK_NO_CHK));
+   rb_define_const(KontoCheck,"OK_TEST_BLZ_USED",INT2FIX(OK_TEST_BLZ_USED));
+   rb_define_const(KontoCheck,"LUT2_VALID",INT2FIX(LUT2_VALID));
+   rb_define_const(KontoCheck,"LUT2_NO_VALID_DATE",INT2FIX(LUT2_NO_VALID_DATE));
+   rb_define_const(KontoCheck,"LUT1_SET_LOADED",INT2FIX(LUT1_SET_LOADED));
+   rb_define_const(KontoCheck,"LUT1_FILE_GENERATED",INT2FIX(LUT1_FILE_GENERATED));
+   rb_define_const(KontoCheck,"DTA_FILE_WITH_WARNINGS",INT2FIX(DTA_FILE_WITH_WARNINGS));
+   rb_define_const(KontoCheck,"LUT_V2_FILE_GENERATED",INT2FIX(LUT_V2_FILE_GENERATED));
+   rb_define_const(KontoCheck,"KTO_CHECK_VALUE_REPLACED",INT2FIX(KTO_CHECK_VALUE_REPLACED));
+   rb_define_const(KontoCheck,"OK_UNTERKONTO_POSSIBLE",INT2FIX(OK_UNTERKONTO_POSSIBLE));
+   rb_define_const(KontoCheck,"OK_UNTERKONTO_GIVEN",INT2FIX(OK_UNTERKONTO_GIVEN));
+   rb_define_const(KontoCheck,"OK_SLOT_CNT_MIN_USED",INT2FIX(OK_SLOT_CNT_MIN_USED));
+}

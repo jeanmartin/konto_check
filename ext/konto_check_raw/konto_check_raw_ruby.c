@@ -228,7 +228,7 @@ static void get_params(int argc,VALUE* argv,char *arg1s,char *arg2s,int *argi,in
 }
 
 /**
- * KontoCheck::konto_check(<kto>, <blz>)
+ * KontoCheck::konto_check(<blz>, <kto>)
  *
  * check whether the given account number kto kann possibly be
  * a valid number of the bank with the bic blz.
@@ -260,9 +260,10 @@ static VALUE konto_check(int argc,VALUE* argv,VALUE self)
    if((retval=kto_check_blz(blz,kto))==LUT2_NOT_INITIALIZED || retval==MISSING_PARAMETER)RUNTIME_ERROR(retval);
 
       /* etwas unschlüssig, welche Version man nehmen sollte */
-//   return rb_ary_new3(2,retval>0?Qtrue:Qfalse,INT2FIX(retval));
-   return INT2FIX(retval);
+   //return INT2FIX(retval);
+   return rb_ary_new3(2,retval>0?Qtrue:Qfalse,INT2FIX(retval));
 }
+
 
 /**
  * KontoCheck::init([lutfile[,level[,set]]])
@@ -300,6 +301,7 @@ static VALUE init(int argc,VALUE* argv,VALUE self)
    switch(retval){
       case OK:
       case LUT1_SET_LOADED:
+      case LUT2_PARTIAL_OK:
          break;
       default:
          RUNTIME_ERROR(retval);
@@ -1337,9 +1339,9 @@ static VALUE bank_suche_ort(int argc,VALUE* argv,VALUE self)
 /**
  * The initialization method for this module
  */
-void Init_konto_check()
+void Init_konto_check_raw()
 {
-   KontoCheck = rb_define_module("KontoCheck");
+   KontoCheck = rb_define_module("KontoCheckRaw");
 
       /* die Parameteranzahl -1 bei den folgenden Funktionen meint eine variable
        * Anzahl Parameter; die genaue Anzahl wird bei der Funktion rb_scan_args()

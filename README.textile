@@ -1,0 +1,61 @@
+h1. KontoCheck
+
+Check whether a certain bic/account-no-combination can possibly be valid for a German bank.
+
+It uses the C library konto_check (see http://sourceforge.net/projects/kontocheck/) by
+Michael Plugge.
+
+h2. Example
+
+An example tends to tell more than a 1000 words:
+
+<pre>
+>> require "konto_check"
+true
+
+>> KontoCheck::init("./blz.lut")
+true
+
+# konto_check?(blz, ktno) => true/false (valid/invalid)
+>> KontoCheck::konto_check?("52250030", "52001")
+true
+
+>> KontoCheck::konto_check?("52250030", "52002")
+false
+
+# ISO-8859-1 encoded name of bank
+>> KontoCheck::bank_name("10010010")
+"Postbank"
+
+# there is more, RTFS or wait for/help creating more examples...
+</pre>
+
+h2. Short 'Documentation'
+
+h3. <tt>KontoCheck::konto_check?(&lt;blz&gt;, &lt;kto&gt;)</tt>
+
+check whether the given account number <tt>kto</tt> can possibly be
+a valid number of the bank with the bic <tt>blz</tt>.
+
+h3. <tt>KontoCheck::init(&lt;lut_file&gt;)</tt>
+
+initialize the underlying C library konto_check with bank
+information from the LUT file <tt>lut_file</tt>.
+The LUT file can be created from the plain text file
+found at: http://www.bundesbank.de/zahlungsverkehr/zahlungsverkehr_bankleitzahlen_download.php
+This file is updated every three months, so be sure to
+replace (and regenerate) it regularly.
+
+There will be a rake task to update the LUT file soon.
+
+h3. <tt>KontoCheck::bank_name(&lt;blz&gt;)</tt>
+
+returns the name of the bank as a (ISO-8859-1 encoded)
+string or raises a runtime error with a short error message
+if an error occurred (invalid blz, blz too short, etc.).
+This may be changed in the future to simply return nil (should be discussed).
+
+h2. License
+
+Since the original http://www.informatik.hs-mannheim.de/konto_check/ is
+licensed under LGPL, so is this module.

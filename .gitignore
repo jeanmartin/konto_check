@@ -1,1 +1,25 @@
+## MAC OS
 .DS_Store
+
+## TEXTMATE
+*.tmproj
+tmtags
+
+## EMACS
+*~
+\#*
+.\#*
+
+## VIM
+*.swp
+
+## PROJECT::GENERAL
+coverage
+rdoc
+pkg
+
+## PROJECT::SPECIFIC
+ext/konto_check/*.o
+ext/konto_check/*.log
+ext/konto_check/*.bundle
+ext/konto_check/Makefile

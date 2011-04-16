@@ -45,13 +45,11 @@
 
 /* 
  * ##########################################################################
- * # Die Berechnungsmethode D1 wird zum 7.3.2011 geändert; wenn das         #
- * # folgenden Makro auf 1 gesetzt wird, wird die neue Berechnungsmethode   #
- * # verwendet. Die Methode wird aktuell (30.12.2010) von keiner Bank       #
- * # benutzt, daher kann der neue Code ohne Probleme schon aktiviert werden.#
+ * # Die Berechnungsmethoden B8, C6 und D4 werden zum 6.6.11 geändert; mit  #
+ * # dem folgenden Makro werden die neuen Berechnungsmethoden aktiviert.    #
  * ##########################################################################
  */
-#define METHODE_D1_NEU_2011_03_07 1
+#define METHODE_NEU_2011_06_06 0
 
 /* 
  * ##########################################################################
@@ -245,9 +243,9 @@
 #define LUT2_DEFAULT                501
 
 #ifdef KONTO_CHECK_VARS
-char *lut2_feld_namen[256];
+const char *lut2_feld_namen[256];
 #else
-extern char *lut2_feld_namen[256];
+extern const char *lut2_feld_namen[256];
 #endif
 
 /*
@@ -408,7 +406,7 @@ typedef unsigned long UINT4;
     * Als erstes neues Element wird pz_pos (Position der Prüfziffer) eingeführt.
     */
 typedef struct{
-   char *methode;
+   const char *methode;
    INT4 pz_methode;
    INT4 pz;
    signed char pz_pos;
@@ -532,7 +530,6 @@ DLL_EXPORT int set_default_compression(int mode);
 DLL_EXPORT int kto_check(char *x_blz,char *kto,char *lut_name);
 DLL_EXPORT int kto_check_t(char *x_blz,char *kto,char *lut_name,KTO_CHK_CTX *ctx);
 DLL_EXPORT const char *kto_check_str(char *x_blz,char *kto,char *lut_name);
-DLL_EXPORT char *kto_check_str_t(char *x_blz,char *kto,char *lut_name,KTO_CHK_CTX *ctx);
 
 /* ###########################################################################
  * # Die Funktion kto_check_blz() ist die neue externe Schnittstelle zur     #
@@ -660,7 +657,7 @@ DLL_EXPORT int get_lut_info_t(char **info,char *lut_name,KTO_CHK_CTX *ctx);
  * # Diese Funktion wird erst ab Version 1.1 der library unterstützt.   #
  * ######################################################################
  */
-DLL_EXPORT char *get_kto_check_version(void);
+DLL_EXPORT const char *get_kto_check_version(void);
 
 /*
  * ######################################################################
@@ -708,7 +705,7 @@ DLL_EXPORT int lut_dir_dump(char *lutname,char *outputname);
 DLL_EXPORT int lut_dir_dump_str(char *lutname,char **dptr);
 DLL_EXPORT int generate_lut2_p(char *inputname,char *outputname,char *user_info,char *gueltigkeit,
       UINT4 felder,UINT4 filialen,int slots,int lut_version,int set);
-DLL_EXPORT int generate_lut2(char *inputname,char *outputname,char *user_info,
+DLL_EXPORT int generate_lut2(char *inputname,char *outputname,const char *user_info,
       char *gueltigkeit,UINT4 *felder,UINT4 slots,UINT4 lut_version,UINT4 set);
 DLL_EXPORT int copy_lutfile(char *old_name,char *new_name,int new_slots);
 DLL_EXPORT int lut_init(char *lut_name,int required,int set);
@@ -739,18 +736,18 @@ DLL_EXPORT int lut_multiple_i(int b,int *cnt,int **p_blz,char ***p_name,char ***
 DLL_EXPORT int lut_blz(char *b,int zweigstelle);
 DLL_EXPORT int lut_filialen(char *b,int *retval);
 DLL_EXPORT int lut_filialen_i(int b,int *retval);
-DLL_EXPORT char *lut_name(char *b,int zweigstelle,int *retval);
-DLL_EXPORT char *lut_name_i(int b,int zweigstelle,int *retval);
-DLL_EXPORT char *lut_name_kurz(char *b,int zweigstelle,int *retval);
-DLL_EXPORT char *lut_name_kurz_i(int b,int zweigstelle,int *retval);
+DLL_EXPORT const char *lut_name(char *b,int zweigstelle,int *retval);
+DLL_EXPORT const char *lut_name_i(int b,int zweigstelle,int *retval);
+DLL_EXPORT const char *lut_name_kurz(char *b,int zweigstelle,int *retval);
+DLL_EXPORT const char *lut_name_kurz_i(int b,int zweigstelle,int *retval);
 DLL_EXPORT int lut_plz(char *b,int zweigstelle,int *retval);
 DLL_EXPORT int lut_plz_i(int b,int zweigstelle,int *retval);
-DLL_EXPORT char *lut_ort(char *b,int zweigstelle,int *retval);
-DLL_EXPORT char *lut_ort_i(int b,int zweigstelle,int *retval);
+DLL_EXPORT const char *lut_ort(char *b,int zweigstelle,int *retval);
+DLL_EXPORT const char *lut_ort_i(int b,int zweigstelle,int *retval);
 DLL_EXPORT int lut_pan(char *b,int zweigstelle,int *retval);
 DLL_EXPORT int lut_pan_i(int b,int zweigstelle,int *retval);
-DLL_EXPORT char *lut_bic(char *b,int zweigstelle,int *retval);
-DLL_EXPORT char *lut_bic_i(int b,int zweigstelle,int *retval);
+DLL_EXPORT const char *lut_bic(char *b,int zweigstelle,int *retval);
+DLL_EXPORT const char *lut_bic_i(int b,int zweigstelle,int *retval);
 DLL_EXPORT int lut_nr(char *b,int zweigstelle,int *retval);
 DLL_EXPORT int lut_nr_i(int b,int zweigstelle,int *retval);
 DLL_EXPORT int lut_pz(char *b,int zweigstelle,int *retval);
@@ -786,7 +783,7 @@ DLL_EXPORT int lut_cleanup(void);
 
    /* IBAN-Sachen */
 DLL_EXPORT int iban_check(char *iban,int *retval);
-DLL_EXPORT char *iban2bic(char *iban,int *retval,char *blz,char *kto);
+DLL_EXPORT const char *iban2bic(char *iban,int *retval,char *blz,char *kto);
 DLL_EXPORT char *iban_gen(char *kto,char *blz,int *retval);
 DLL_EXPORT int ipi_gen(char *zweck,char *dst,char *papier);
 DLL_EXPORT int ipi_check(char *zweck);

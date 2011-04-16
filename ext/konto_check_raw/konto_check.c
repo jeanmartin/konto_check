@@ -48,9 +48,9 @@
 
 /* Definitionen und Includes  */
 #ifndef VERSION
-#define VERSION "3.5"
+#define VERSION "3.6"
 #endif
-#define VERSION_DATE "2011-03-05"
+#define VERSION_DATE "2011-04-13"
 
 #ifndef INCLUDE_KONTO_CHECK_DE
 #define INCLUDE_KONTO_CHECK_DE 1
@@ -397,7 +397,7 @@ int pz=-777;
 #define E_END(x)
 
    /* Variable für die Methoden 27, 29 und 69 */
-const static int m10h_digits[4][10]={
+static const int m10h_digits[4][10]={
    {0,1,5,9,3,7,4,8,2,6},
    {0,1,7,6,9,8,3,2,5,4},
    {0,1,8,4,6,2,9,5,7,3},
@@ -501,7 +501,7 @@ static short *hash;
     * sich jedoch nicht sehr stark ändert, können die Zahlen vorläufig bleiben
     * (von Zeit zu Zeit sollten sie natürlich geprüft werden).
     */
-const static int 
+static const int 
     hx1[]={   2,  733, 1637, 2677, 3701, 4799, 5881, 7027, 8233, 9397},
     hx2[]={  89,  883, 1831, 2833, 3907, 4999, 6121, 7247, 8443, 9601},
     hx3[]={ 211, 1049, 2011, 3023, 4091, 5197, 6311, 7499, 8669, 9791},
@@ -517,7 +517,7 @@ static int h1['9'+1],h2['9'+1],h3['9'+1],h4['9'+1],h5['9'+1],h6['9'+1],h7['9'+1]
    /* für Methode 52 sind ein paar Gewichtsfaktoren mehr als spezifiziert,
     * falls die Kontonummer zu lang wird
     */
-const static int w52[] = { 2, 4, 8, 5,10, 9, 7, 3, 6, 1, 2, 4, 0, 0, 0, 0},
+static const int w52[] = { 2, 4, 8, 5,10, 9, 7, 3, 6, 1, 2, 4, 0, 0, 0, 0},
    w24[]={ 1, 2, 3, 1, 2, 3, 1, 2, 3 },
    w93[]= { 2, 3, 4, 5, 6, 7, 2, 3, 4 };
 
@@ -928,7 +928,7 @@ static int write_lut_block_int(FILE *lut,UINT4 typ,UINT4 len,char *data)
       UL2C(write_pos,ptr);
       UL2C(compressed_len,ptr);
       fseek(lut,dir_pos,SEEK_SET);     /* und in die Datei schreiben */
-      if(fwrite(buffer,12,slots,lut)<slots){
+      if(fwrite(buffer,12,slots,lut)<(size_t)slots){
          PRINT_VERBOSE_DEBUG_FILE("fwrite");
          RETURN(FILE_WRITE_ERROR);
       }
@@ -1506,7 +1506,7 @@ static int write_lutfile_entry_de(UINT4 typ,int auch_filialen,int bank_cnt,char 
 
       case LUT2_NAME:  /* Bezeichnung des Kreditinstitutes (ohne Rechtsform) */
       case LUT2_2_NAME:
-         for(i=0,name_hauptstelle=name_start="",dptr=out_buffer;i<bank_cnt;i++)if(auch_filialen || (hs=qs_hauptstelle[qs_sortidx[i]])=='1'){
+         for(i=0,name_hauptstelle=name_start=(char*)"",dptr=out_buffer;i<bank_cnt;i++)if(auch_filialen || (hs=qs_hauptstelle[qs_sortidx[i]])=='1'){
             zptr=qs_zeilen[qs_sortidx[i]];
             hs=qs_hauptstelle[qs_sortidx[i]];
             if(hs=='1' && auch_filialen){
@@ -1770,10 +1770,11 @@ DLL_EXPORT int generate_lut2_p(char *inputname,char *outputname,char *user_info,
  * ###########################################################################
  */
 
-DLL_EXPORT int generate_lut2(char *inputname,char *outputname,char *user_info,
+DLL_EXPORT int generate_lut2(char *inputname,char *outputname,const char *user_info,
       char *gueltigkeit,UINT4 *felder,UINT4 slots,UINT4 lut_version,UINT4 set)
 {
-   char *buffer,*out_buffer,*ptr,*zptr,*dptr,*testbanken;
+   char *buffer,*out_buffer,*ptr,*zptr,*dptr;
+   const char *testbanken;
    UINT4 bufsize,adler,g1,g2;
    int cnt,bank_cnt,i,j,retval,h,auch_filialen,prev_blz,b,diff,ok;
    struct stat s_buf;
@@ -1784,7 +1785,7 @@ DLL_EXPORT int generate_lut2(char *inputname,char *outputname,char *user_info,
    lut=NULL;
    ok=OK;
    if(!gueltigkeit || !*gueltigkeit){
-      gueltigkeit="";
+      gueltigkeit=(char*)"";
       g1=g2=0;
    }
    else{
@@ -1837,7 +1838,7 @@ DLL_EXPORT int generate_lut2(char *inputname,char *outputname,char *user_info,
    }
    cnt=fread(buffer,1,s_buf.st_size,in);
    dptr=buffer+cnt;
-   for(ptr=testbanken;(*dptr++=*ptr++);cnt++);
+   for(ptr=(char*)testbanken;(*dptr++=*ptr++);cnt++);
    bank_cnt=cnt/168; /* etwas zuviel allokieren, aber so ist es sicherer (CR/LF wird bei der Datensatzlänge 168 nicht mitgezählt) */
 
       /* Speicher für die Arrays allokieren */
@@ -1880,9 +1881,9 @@ DLL_EXPORT int generate_lut2(char *inputname,char *outputname,char *user_info,
    qsort(qs_sortidx,bank_cnt,sizeof(int),sort_cmp);
 
    if(!user_info)
-      user_info="";
+      user_info=(char*)"";
    else   /* newlines sind in der user_info Zeile nicht zulässig; in Blanks umwandeln */
-      for(ptr=user_info;*ptr;ptr++)if(*ptr=='\r' || *ptr=='\n')*ptr=' ';
+      for(ptr=(char*)user_info;*ptr;ptr++)if(*ptr=='\r' || *ptr=='\n')*ptr=' ';
 
       /* nachsehen, ob Feld LUT2_FILIALEN in der Liste ist; falls nicht, nur Hauptstellen aufnehmen */
    for(i=auch_filialen=0;felder[i] && i<MAX_SLOTS;i++)if(felder[i]==LUT2_FILIALEN)auch_filialen=1;
@@ -1993,7 +1994,7 @@ DLL_EXPORT int generate_lut2(char *inputname,char *outputname,char *user_info,
       adler=adler32a(0,(char *)out_buffer,dptr-out_buffer)^h;  /* Prüfsumme */
       WRITE_LONG(h,lut);
       WRITE_LONG(adler,lut);
-      if(fwrite((char *)out_buffer,1,dptr-out_buffer,lut)<(dptr-out_buffer)){
+      if(fwrite((char *)out_buffer,1,dptr-out_buffer,lut)<(size_t)(dptr-out_buffer)){
          PRINT_VERBOSE_DEBUG_FILE("fwrite");
          retval=FILE_WRITE_ERROR;       /* BLZ-Liste */
          goto fini;
@@ -2151,7 +2152,7 @@ DLL_EXPORT int lut_dir_dump_str(char *lutname,char **dptr)
    *dptr=ptr;
    sprintf(ptr," Slot retval   Typ   Inhalt             Länge    kompr.   Verh.    Adler32  Test\n");
    while(*ptr)ptr++;
-   for(len1=len2=0,i=slot_cnt=1;i<=slot_cnt;i++){
+   for(len1=len2=0,i=slot_cnt=1;i<=(int)slot_cnt;i++){
       retval=lut_dir(lut,i,&slot_cnt,&typ,&len,&compressed_len,&adler,NULL,NULL);
       if(retval==LUT2_FILE_CORRUPTED || retval==KTO_CHECK_UNSUPPORTED_COMPRESSION){
          fclose(lut);
@@ -2170,7 +2171,7 @@ DLL_EXPORT int lut_dir_dump_str(char *lutname,char **dptr)
    sprintf(ptr,"\nGesamtgroesse unkomprimiert: %d, Gesamtgroesse komprimiert: %d\nKompressionsrate: %1.2f%% (Kompression: %s)\nSlotdir (kurz): ",
          len1,len2,100.*(double)len2/len1,compr_str[compression_mode]);
    while(*ptr)ptr++;
-   for(i=0;i<slot_cnt;i++)if(slotdir[i]){
+   for(i=0;i<(int)slot_cnt;i++)if(slotdir[i]){
       sprintf(ptr,"%d ",slotdir[i]);
       while(*ptr)ptr++;
    }
@@ -2308,7 +2309,6 @@ DLL_EXPORT int lut_info(char *lut_name,char **info1,char **info2,int *valid1,int
    FILE *in;
 
    t=time(NULL);
-   v2a=0;
    timeptr=localtime_r(&t,&timebuf);
    current=(timeptr->tm_year+1900)*10000+(timeptr->tm_mon+1)*100+timeptr->tm_mday;  /* aktuelles Datum als JJJJMMTT */
 #if DEBUG>0
@@ -2396,16 +2396,17 @@ DLL_EXPORT int lut_info(char *lut_name,char **info1,char **info2,int *valid1,int
                if(*ptr1)v2=strtoul(ptr1,NULL,10);  /* Endedatum der Gültigkeit */
             }
          }
-         if(!v1 || !v2) /* (mindestens) ein Datum fehlt */
+         v2a=v2;
+         if(!v1 || !v2){ /* (mindestens) ein Datum fehlt */
             *valid1=LUT2_NO_VALID_DATE;
+            v2a=0;
+         }
          else if(current>=v1 && current<=v2)
             *valid1=LUT2_VALID;
          else if(current<v1)
             *valid1=LUT2_NOT_YET_VALID;
-         else if(current>v2){
+         else if(current>v2)
             *valid1=LUT2_NO_LONGER_VALID;
-            v2a=v2;
-         }
       }
       if(info1)
          *info1=ptr;
@@ -2442,20 +2443,31 @@ DLL_EXPORT int lut_info(char *lut_name,char **info1,char **info2,int *valid1,int
                if(*ptr1)v2=strtoul(ptr1,NULL,10);  /* Endedatum der Gültigkeit */
             }
          }
-         if(!v1 || !v2) /* (mindestens) ein Datum fehlt */
+         if(!v1 || !v2){ /* (mindestens) ein Datum fehlt */
             *valid2=LUT2_NO_VALID_DATE;
+            v2=0;
+         }
          else if(current>=v1 && current<=v2)
             *valid2=LUT2_VALID;
          else if(current<v1)
             *valid2=LUT2_NOT_YET_VALID;
          else if(current>v2){
-               /* beide Datensätze ungültig; den jüngeren der beiden als LUT2_NO_LONGER_VALID_BETTER markieren */
-            if(v2>v2a)
-               *valid2=LUT2_NO_LONGER_VALID_BETTER;
-            else{
-               *valid1=LUT2_NO_LONGER_VALID_BETTER;
-               *valid2=LUT2_NO_LONGER_VALID;
+               /* nur wenn in beiden Datensätzen das Gültigkeitsdatum vorhanden
+                * ist, einen als besser klassifizieren
+               */
+            if(v2 && v2a && *valid1==LUT2_NO_LONGER_VALID){
+                  /* beide Datensätze sind ungültig; den jüngeren der beiden
+                   * als LUT2_NO_LONGER_VALID_BETTER markieren
+                  */
+               if(v2>v2a)
+                  *valid2=LUT2_NO_LONGER_VALID_BETTER;
+               else{
+                  *valid1=LUT2_NO_LONGER_VALID_BETTER;
+                  *valid2=LUT2_NO_LONGER_VALID;
+               }
             }
+            else
+               *valid2=LUT2_NO_LONGER_VALID;
          }
       }
       if(info2)
@@ -2504,7 +2516,7 @@ DLL_EXPORT int lut_info(char *lut_name,char **info1,char **info2,int *valid1,int
 
 DLL_EXPORT int get_lut_info2(char *lut_name,int *version_p,char **prolog_p,char **info_p,char **user_info_p)
 {
-   char *buffer,*ptr,*sptr,*info="",*user_info="",name_buffer[LUT_PATH_LEN];
+   char *buffer,*ptr,*sptr,*info=(char*)"",*user_info=(char*)"",name_buffer[LUT_PATH_LEN];
    int i,j,k,buflen,version,zeile,compression_mode;
    unsigned long offset1,offset2;
    struct stat s_buf;
@@ -2553,7 +2565,7 @@ DLL_EXPORT int get_lut_info2(char *lut_name,int *version_p,char **prolog_p,char 
          if(version>1 && *(ptr-2)=='\\')  /* User-Infozeile vorhanden */
             user_info=ptr;
          else{  /* keine User-Infozeile */
-            user_info="";
+            user_info=(char*)"";
             if(version<3){ /* bei Fileversion 2.0 kommen noch einige Prolog-Daten */
                *ptr++=0;   /* Ende des Prologs (LUT 1.0/1.1), Nullbyte anhängen */
                break;
@@ -2638,7 +2650,7 @@ DLL_EXPORT int copy_lutfile(char *old_name,char *new_name,int new_slots)
 
       /* Liste sortieren, damit jeder Eintrag nur einmal geschrieben wird */
    qsort(slotdir,slot_cnt,sizeof(int),sort_int);
-   for(last_slot=-1,i=0;i<slot_cnt;i++)if((typ=slotdir[i]) && typ!=last_slot){
+   for(last_slot=-1,i=0;i<(int)slot_cnt;i++)if((typ=slotdir[i]) && typ!=(UINT4)last_slot){
       read_lut_block_int(lut1,0,typ,&len,&data);
       write_lut_block_int(lut2,typ,len,data);
       FREE(data);
@@ -3236,7 +3248,7 @@ DLL_EXPORT int kto_check_init(char *lut_name,int *required,int **status,int set,
                    || (!startidx && !(startidx=calloc(lut2_cnt_hs,sizeof(int)))))
                lut2_block_status[typ]=lut2_block_status[typ1]=ERROR_MALLOC;
             else{
-               for(i=j=0,ptr=data,eptr=data+len;i<len;i++){
+               for(i=j=0,ptr=data,eptr=data+len;i<(int)len;i++){
                   startidx[i]+=j;
                   j+=(filialen[i]=UI *ptr++)-1;
                }
@@ -3384,7 +3396,7 @@ DLL_EXPORT int kto_check_init(char *lut_name,int *required,int **status,int set,
                bic_buffer=realloc(bic_buffer,(size_t)(dptr-bic_buffer)+10);
                for(j=0;j<i;j++)
                   if(!bic[j])   /* Leerstring */
-                     bic[j]="           ";
+                     bic[j]=(char*)"           ";
                   else  /* Adresse anpassen */
                      bic[j]=(bic_buffer+(unsigned long)bic[j]);
             }
@@ -3654,7 +3666,7 @@ DLL_EXPORT int lut_filialen_i(int b,int *retval)
  * ###########################################################################
  */
 
-DLL_EXPORT char *lut_name(char *b,int zweigstelle,int *retval)
+DLL_EXPORT const char *lut_name(char *b,int zweigstelle,int *retval)
 {
    int idx;
 
@@ -3664,7 +3676,7 @@ DLL_EXPORT char *lut_name(char *b,int zweigstelle,int *retval)
    return name[startidx[idx]+zweigstelle];
 }
 
-DLL_EXPORT char *lut_name_i(int b,int zweigstelle,int *retval)
+DLL_EXPORT const char *lut_name_i(int b,int zweigstelle,int *retval)
 {
    int idx;
 
@@ -3689,7 +3701,7 @@ DLL_EXPORT char *lut_name_i(int b,int zweigstelle,int *retval)
  * ###########################################################################
  */
 
-DLL_EXPORT char *lut_name_kurz(char *b,int zweigstelle,int *retval)
+DLL_EXPORT const char *lut_name_kurz(char *b,int zweigstelle,int *retval)
 {
    int idx;
 
@@ -3699,7 +3711,7 @@ DLL_EXPORT char *lut_name_kurz(char *b,int zweigstelle,int *retval)
    return name_kurz[startidx[idx]+zweigstelle];
 }
 
-DLL_EXPORT char *lut_name_kurz_i(int b,int zweigstelle,int *retval)
+DLL_EXPORT const char *lut_name_kurz_i(int b,int zweigstelle,int *retval)
 {
    int idx;
 
@@ -3745,7 +3757,7 @@ DLL_EXPORT int lut_plz_i(int b,int zweigstelle,int *retval)
  * ###########################################################################
  */
 
-DLL_EXPORT char *lut_ort(char *b,int zweigstelle,int *retval)
+DLL_EXPORT const char *lut_ort(char *b,int zweigstelle,int *retval)
 {
    int idx;
 
@@ -3755,7 +3767,7 @@ DLL_EXPORT char *lut_ort(char *b,int zweigstelle,int *retval)
    return ort[startidx[idx]+zweigstelle];
 }
 
-DLL_EXPORT char *lut_ort_i(int b,int zweigstelle,int *retval)
+DLL_EXPORT const char *lut_ort_i(int b,int zweigstelle,int *retval)
 {
    int idx;
 
@@ -3824,7 +3836,7 @@ DLL_EXPORT int lut_pan_i(int b,int zweigstelle,int *retval)
  * ###########################################################################
  */
 
-DLL_EXPORT char *lut_bic(char *b,int zweigstelle,int *retval)
+DLL_EXPORT const char *lut_bic(char *b,int zweigstelle,int *retval)
 {
    int idx;
 
@@ -3834,7 +3846,7 @@ DLL_EXPORT char *lut_bic(char *b,int zweigstelle,int *retval)
    return bic[startidx[idx]+zweigstelle];
 }
 
-DLL_EXPORT char *lut_bic_i(int b,int zweigstelle,int *retval)
+DLL_EXPORT const char *lut_bic_i(int b,int zweigstelle,int *retval)
 {
    int idx;
 
@@ -4483,7 +4495,7 @@ static void init_atoi_table(void)
     */
    for(i=0;i<256;i++){
       b0[i]=b1[i]=b2[i]=b3[i]=b4[i]=b5[i]=b6[i]=b7[i]=b8[i]=bx1[i]=bx2[i]=by1[i]=by4[i]=BLZ_FEHLER;
-      leer_string[i]="";
+      leer_string[i]=(char*)"";
       leer_zahl[i]=-1;
       leer_char[i]=0;
       lc[i]=i; /* für stri_cmp() */
@@ -7196,7 +7208,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
 #endif
          if(!x_blz){
             ok=OK_TEST_BLZ_USED;
-            x_blz="13051172";
+            x_blz=(char*)"13051172";
          }
          else
             ok=OK;
@@ -7300,7 +7312,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
 #endif
          if(!x_blz){
             ok=OK_TEST_BLZ_USED;
-            x_blz="16052072";
+            x_blz=(char*)"16052072";
          }
          else
             ok=OK;
@@ -12559,7 +12571,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
 #endif
             if(!x_blz){
                ok=OK_TEST_BLZ_USED;
-               x_blz="80053762";
+               x_blz=(char*)"80053762";
             }
             else
                ok=OK;
@@ -12666,7 +12678,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
 /*  Berechnung nach der Methode B8 +§§§4 */
 /*
  * ######################################################################
- * #              Berechnung nach der Methode B8                        #
+ * #              Berechnung nach der Methode B8 (geändert zum 6.6.11)  #
  * ######################################################################
  * # Die Kontonummer ist einschließlich der Prüfziffer 10-stellig,      #
  * # ggf. ist die Kontonummer für die Prüfzifferberechnung durch        #
@@ -12682,6 +12694,16 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
  * #                                                                    #
  * # Variante 2: Modulus 10, iterierte Transformation.                  #
  * # Die Berechnung und mögliche Ergebnisse entsprechen der Methode 29. #
+ * # Führt die Berechnung nach Variante 2 zu einem  Prüfzifferfehler,   #
+ * # so ist nach Variante 3 zu prüfen.                                  #
+ * #                                                                    #
+ * # Variante 3:                                                        #
+ * # Für die folgenden Kontonummernkreise gilt die Methode 09 (keine    #
+ * # Prüfzifferberechnung):                                             #
+ * # 10-stellige Kontonummer; 1. + 2. Stelle = 51 - 59                  #
+ * # Kontonummernkreis 5100000000 - 5999999999                          #
+ * # 10-stellige Kontonummer; Stellen 1 - 3 = 901 - 910                 #
+ * # Kontonummernkreis 9010000000 - 9109999999                          #
  * ######################################################################
  */
 
@@ -12728,7 +12750,25 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
             + m10h_digits[0][(unsigned int)(kto[8]-'0')];
          MOD_10_80;   /* pz%=10 */
          if(pz)pz=10-pz;
+#if METHODE_NEU_2011_06_06
+         CHECK_PZX10;
+
+#if DEBUG>0
+      case 3118:
+         if(retvals){
+            retvals->methode="B8c";
+            retvals->pz_methode=3118;
+         }
+#endif
+            /* Variante 3 (neu zum 6.6.2011) */
+         if((*kto=='5' && *(kto+1)>'0')
+               || (*kto=='9' && *(kto+1)=='0' && *(kto+2)>='1')
+               || (*kto=='9' && *(kto+1)=='1' && *(kto+2)=='0'))
+            return OK_NO_CHK;
+         return FALSE;
+#else
          CHECK_PZ10;
+#endif
 
 /*  Berechnung nach der Methode B9 +§§§4 */
 /*
@@ -12909,7 +12949,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
 #endif
             if(!x_blz){
                ok=OK_TEST_BLZ_USED;
-               x_blz="13051172";
+               x_blz=(char*)"13051172";
             }
             else
                ok=OK;
@@ -13536,11 +13576,11 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
  * # Prüfziffer.                                                        #
  * #                                                                    #
  * # Kontonummern, die an der 1. Stelle von links der 10-stelligen      #
- * # Kontonummer einen der Wert 4, 5, 6 oder 8 beinhalten sind falsch.  #
+ * # Kontonummer einen der Wert 4 oder 8 beinhalten sind falsch.        #
  * #                                                                    #
  * # Kontonummern, die an der 1. Stelle von links der 10-stelligen      #
- * # Kontonummer einen der Werte 0, 1, 2, 3, 7 oder 9 beinhalten sind   #
- * # wie folgt zu prüfen:                                               #
+ * # Kontonummer einen der Werte 0, 1, 2, 3, 5, 6, 7 oder 9 beinhalten  #
+ * # sind wie folgt zu prüfen:                                          #
  * #                                                                    #
  * # Für die Berechnung der Prüfziffer werden die Stellen 2 bis 9 der   #
  * # Kontonummer verwendet. Diese Stellen sind links um eine Zahl       #
@@ -13554,6 +13594,8 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
  * #            1          4451981                                      #
  * #            2          4451992                                      #
  * #            3          4451993                                      #
+ * #            5          4344990                                      #
+ * #            6          4344991                                      #
  * #            7          5499570                                      #
  * #            9          5499579                                      #
  * #                                                                    #
@@ -13574,12 +13616,16 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
             retvals->pz_methode=126;
          }
 #endif
-            /* neue Berechnungsmethode für C6, gültig ab 9.3.2009; Änderung zum 7.6.2010 */
+            /* neue Berechnungsmethode für C6, gültig ab 9.3.2009; Änderung zum 6.6.2011 */
          switch(kto[0]){
             case '0': pz=30; break;
             case '1': pz=33; break;
             case '2': pz=36; break;
             case '3': pz=38; break; /* neu zum 7.6.2010 */
+#if METHODE_NEU_2011_06_06
+            case '5': pz=33; break; /* neu zum 6.6.2011 */
+            case '6': pz=34; break; /* neu zum 6.6.2011 */
+#endif
             case '7': pz=31; break;
             case '9': pz=40; break;
             default: return INVALID_KTO;
@@ -13889,7 +13935,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
          INVALID_PZ10;
          CHECK_PZ10;
 
-/* Berechnungsmethoden D0 bis D6 +§§§3
+/* Berechnungsmethoden D0 bis D8 +§§§3
  * Berechnung nach der Methode D0 +§§§4 */
 /*
  * ######################################################################
@@ -14033,29 +14079,8 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
             retvals->pz_methode=131;
          }
 #endif
-#if METHODE_D1_NEU_2011_03_07
          if(*kto=='2' || *kto=='7' || *kto=='8')return INVALID_KTO;
          pz=31;
-#else
-         switch(*kto){
-            case '0':
-            case '3':
-            case '4':
-            case '5':
-            case '9':
-               pz=31;
-               break;
-
-            case '1':
-            case '2':
-            case '6':
-            case '7':
-            case '8':
-            default:
-               pz=29;
-               break;
-         }
-#endif
 
 #ifdef __ALPHA
          pz+= ((kto[0]<'5') ? (kto[0]-'0')*2 : (kto[0]-'0')*2-9)
@@ -14347,7 +14372,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
 /* Berechnung nach der Methode D4 +§§§4 */
 /*
  * ######################################################################
- * #              Berechnung nach der Methode D4                        #
+ * #              Berechnung nach der Methode D4 (geändert zum 6.6.11)  #
  * ######################################################################
  * # Modulus 10, Gewichtung 1, 2, 1, 2, 1, 2, 1, 2                      #
  * #                                                                    #
@@ -14357,11 +14382,11 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
  * # Prüfziffer.                                                        #
  * #                                                                    #
  * # Kontonummern, die an der 1. Stelle von links der 10-stelligen      #
- * # Kontonummer einen der Werte 0, 1, 2, 6, 7 oder 8 beinhalten, sind  #
- * # falsch.                                                            #
+ * # Kontonummer den Wert 0 beinhalten, sind falsch.                    #
+ * #                                                                    #
  * # Kontonummern, die an der 1. Stelle von links der 10- stelligen     #
- * # Kontonummer einen der Werte 3, 4, 5 oder 9 beinhalten, sind wie    #
- * # folgt zu prüfen:                                                   #
+ * # Kontonummer einen der Werte 1, 2, 3, 4, 5, 6, 7, 8 oder 9          #
+ * # beinhalten, sind wie folgt zu prüfen:                              #
  * #                                                                    #
  * # Für die Berechnung der Prüfziffer werden die Stellen 1 bis 9 der   #
  * # Kontonummer von links verwendet. Diese Stellen sind links um die   #
@@ -14378,6 +14403,12 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
             retvals->pz_methode=134;
          }
 #endif
+#if METHODE_NEU_2011_06_06
+         if(*kto=='0')
+            return INVALID_KTO;
+         else
+            pz=29;
+#else
          switch(*kto){
             case '0':
             case '1':
@@ -14390,6 +14421,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
                pz=29;
                break;
          }
+#endif
 
    /* die Berechnung entspricht komplett der Methode D1 und wurde auch von da
     * kopiert - der einzige Unterschied sind die ungültigen Kontonummern.
@@ -14651,6 +14683,137 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
             retvals->pz_methode=3136;
          }
 #endif
+#ifdef __ALPHA
+         pz = ((kto[0]<'5') ? (kto[0]-'0')*2 : (kto[0]-'0')*2-9)
+            +  (kto[1]-'0')
+            + ((kto[2]<'5') ? (kto[2]-'0')*2 : (kto[2]-'0')*2-9)
+            +  (kto[3]-'0')
+            + ((kto[4]<'5') ? (kto[4]-'0')*2 : (kto[4]-'0')*2-9)
+            +  (kto[5]-'0')
+            + ((kto[6]<'5') ? (kto[6]-'0')*2 : (kto[6]-'0')*2-9)
+            +  (kto[7]-'0')
+            + ((kto[8]<'5') ? (kto[8]-'0')*2 : (kto[8]-'0')*2-9);
+#else
+         pz=(kto[1]-'0')+(kto[3]-'0')+(kto[5]-'0')+(kto[7]-'0');
+         if(kto[0]<'5')pz+=(kto[0]-'0')*2; else pz+=(kto[0]-'0')*2-9;
+         if(kto[2]<'5')pz+=(kto[2]-'0')*2; else pz+=(kto[2]-'0')*2-9;
+         if(kto[4]<'5')pz+=(kto[4]-'0')*2; else pz+=(kto[4]-'0')*2-9;
+         if(kto[6]<'5')pz+=(kto[6]-'0')*2; else pz+=(kto[6]-'0')*2-9;
+         if(kto[8]<'5')pz+=(kto[8]-'0')*2; else pz+=(kto[8]-'0')*2-9;
+#endif
+         MOD_10_80;   /* pz%=10 */
+         if(pz)pz=10-pz;
+         CHECK_PZ10;
+
+/*    Berechnung nach der Methode D7 +§§§4 */
+/*
+ * ######################################################################
+ * #               Berechnung nach der Methode D7                       #
+ * ######################################################################
+ * # Modulus 10, Gewichtung 2, 1, 2, 1, 2, 1, 2, 1, 2                   #
+ * # Die Kontonummer ist einschließlich der Prüfziffer 10-stellig,      #
+ * # ggf. ist die Kontonummer für die Prüfzifferberechnung durch        #
+ * # linksbündige Auffüllung mit Nullen 10-stellig darzustellen.        #
+ * #                                                                    #
+ * # Die Stellen der Kontonummer sind von rechts nach links mit         #
+ * # den Ziffern 2, 1, 2, 1, 2, 1,  2, 1, 2 zu multiplizieren. Die      #
+ * # jeweiligen Produkte werden addiert, nachdem jeweils aus den        #
+ * # zweistelligen Produkten die Quersumme gebildet wurde (z. B.        #
+ * # Produkt 18 = Quersumme 9). Nach der Addition bleiben außer         #
+ * # der Einerstelle alle anderen Stellen unberücksichtigt; diese       #
+ * # Einerstelle ist die Prüfziffer (Ergebnis = 27 / Prüfziffer = 7).   #
+ * ######################################################################
+ * # Anm. (M.P.): Die Methode entspricht (bis auf die Subtraktion von   #
+ * # 10) der Prüfziffermethode 00, und wird auch weitgehend von dieser  #
+ * # Methode kopiert.                                                   #
+ * ######################################################################
+ */
+      case 137:
+#if DEBUG>0
+         if(retvals){
+            retvals->methode="D7";
+            retvals->pz_methode=137;
+         }
+#endif
+#ifdef __ALPHA
+         pz = ((kto[0]<'5') ? (kto[0]-'0')*2 : (kto[0]-'0')*2-9)
+            +  (kto[1]-'0')
+            + ((kto[2]<'5') ? (kto[2]-'0')*2 : (kto[2]-'0')*2-9)
+            +  (kto[3]-'0')
+            + ((kto[4]<'5') ? (kto[4]-'0')*2 : (kto[4]-'0')*2-9)
+            +  (kto[5]-'0')
+            + ((kto[6]<'5') ? (kto[6]-'0')*2 : (kto[6]-'0')*2-9)
+            +  (kto[7]-'0')
+            + ((kto[8]<'5') ? (kto[8]-'0')*2 : (kto[8]-'0')*2-9);
+#else
+         pz=(kto[1]-'0')+(kto[3]-'0')+(kto[5]-'0')+(kto[7]-'0');
+         if(kto[0]<'5')pz+=(kto[0]-'0')*2; else pz+=(kto[0]-'0')*2-9;
+         if(kto[2]<'5')pz+=(kto[2]-'0')*2; else pz+=(kto[2]-'0')*2-9;
+         if(kto[4]<'5')pz+=(kto[4]-'0')*2; else pz+=(kto[4]-'0')*2-9;
+         if(kto[6]<'5')pz+=(kto[6]-'0')*2; else pz+=(kto[6]-'0')*2-9;
+         if(kto[8]<'5')pz+=(kto[8]-'0')*2; else pz+=(kto[8]-'0')*2-9;
+#endif
+         MOD_10_80;   /* pz%=10 */
+            /* hier kommt beim Prüfzifferverfahren 00 noch eine hochkomplizierte Zusatzrechnung ;-))) */
+         CHECK_PZ10;
+
+/*    Berechnung nach der Methode D8 +§§§4 */
+/*
+ * ######################################################################
+ * #               Berechnung nach der Methode D8                       #
+ * ######################################################################
+ * # Die Kontonummer ist einschließlich der Prüfziffer 10-stellig,      #
+ * # ggf. ist die Kontonummer für die Prüfzifferberechnung durch        #
+ * # linksbündige Auffüllung mit Nullen 10-stellig darzustellen.        #
+ * # Die Berechnung der Prüfziffer und die möglichen Ergebnisse         #
+ * # richten sich nach dem jeweils bei der entsprechenden  Variante     #
+ * # angegebenen Kontonummernkreis. Entspricht eine  Kontonummer        #
+ * # keinem der vorgegebenen Kontonummernkreise oder führt die          #
+ * # Berechnung der Prüfziffer nach der Variante 1 zu einem             #
+ * # Prüfzifferfehler, so ist die Kontonummer ungültig.                 #
+ * #                                                                    #
+ * # Variante 1:                                                        #
+ * # Modulus 10, Gewichtung 2, 1, 2, 1, 2, 1, 2, 1, 2                   #
+ * # Für Kontonummern aus dem Kontonummernkreis                         #
+ * # 1000000000 bis 9999999999 entsprechen die Berechnung               #
+ * # und mögliche Ergebnisse der Methode 00.                            #
+ * #                                                                    #
+ * # Variante 2:                                                        #
+ * # Für den Kontonummernkreis 0010000000 bis 0099999999 gilt  die      #
+ * # Methode 09 (keine Prüfzifferberechnung, alle Kontonummern sind     #
+ * # als richtig zu werten).                                            #
+ * ######################################################################
+ */
+      case 138:
+#if DEBUG>0
+         if(retvals){
+            retvals->methode="D8";
+            retvals->pz_methode=138;
+         }
+#endif
+
+#if DEBUG>0
+      case 2138:
+         if(retvals){
+            retvals->methode="D8b";
+            retvals->pz_methode=2138;
+         }
+#endif
+   if(*kto=='0'){
+      if(*(kto+1)=='0' && *(kto+2)>'0')
+         return OK_NO_CHK;
+      else
+         return INVALID_KTO;
+   }
+
+#if DEBUG>0
+      case 1138:
+         if(retvals){
+            retvals->methode="D8a";
+            retvals->pz_methode=1138;
+         }
+#endif
+   /* Berechnung nach der Methode 00 */
 #ifdef __ALPHA
          pz = ((kto[0]<'5') ? (kto[0]-'0')*2 : (kto[0]-'0')*2-9)
             +  (kto[1]-'0')
@@ -15334,7 +15497,7 @@ DLL_EXPORT const char *kto_check_retval2txt(int retval)
       case KTO_CHECK_DEFAULT_BLOCK_FULL: return "Die maximale Anzahl Einträge für den Default-Block wurde erreicht";
       case KTO_CHECK_NO_DEFAULT_BLOCK: return "Es wurde noch kein Default-Block angelegt";
       case KTO_CHECK_KEY_NOT_FOUND: return "Der angegebene Schlüssel wurde im Default-Block nicht gefunden";
-      case LUT2_NO_LONGER_VALID_BETTER: return "Der Datensatz ist nicht mehr gültig, aber jünger als der andere";
+      case LUT2_NO_LONGER_VALID_BETTER: return "Beide Datensätze sind nicht mehr gültig; dieser ist  aber jünger als der andere";
       case DTA_SRC_KTO_DIFFERENT: return "Die Auftraggeber-Kontonummer des C-Datensatzes unterscheidet sich von der des A-Satzes";
       case DTA_SRC_BLZ_DIFFERENT: return "Die Auftraggeber-Bankleitzahl des C-Datensatzes unterscheidet sich von der des A-Satzes";
       case DTA_CR_LF_IN_FILE: return "Die DTA-Datei enthält (unzulässige) Zeilenvorschübe";
@@ -15477,7 +15640,7 @@ DLL_EXPORT const char *kto_check_retval2dos(int retval)
       case KTO_CHECK_DEFAULT_BLOCK_FULL: return "Die maximale Anzahl Eintr„ ge fr den Default-Block wurde erreicht";
       case KTO_CHECK_NO_DEFAULT_BLOCK: return "Es wurde noch kein Default-Block angelegt";
       case KTO_CHECK_KEY_NOT_FOUND: return "Der angegebene Schlssel wurde im Default-Block nicht gefunden";
-      case LUT2_NO_LONGER_VALID_BETTER: return "Der Datensatz ist nicht mehr gltig, aber jnger als der andere";
+      case LUT2_NO_LONGER_VALID_BETTER: return "Beide Datens„ tze sind nicht mehr gltig; dieser ist  aber jnger als der andere";
       case DTA_SRC_KTO_DIFFERENT: return "Die Auftraggeber-Kontonummer des C-Datensatzes unterscheidet sich von der des A-Satzes";
       case DTA_SRC_BLZ_DIFFERENT: return "Die Auftraggeber-Bankleitzahl des C-Datensatzes unterscheidet sich von der des A-Satzes";
       case DTA_CR_LF_IN_FILE: return "Die DTA-Datei enth„ lt (unzul„ ssige) Zeilenvorschbe";
@@ -15620,7 +15783,7 @@ DLL_EXPORT const char *kto_check_retval2html(int retval)
       case KTO_CHECK_DEFAULT_BLOCK_FULL: return "Die maximale Anzahl Eintr&auml;ge f&uuml;r den Default-Block wurde erreicht";
       case KTO_CHECK_NO_DEFAULT_BLOCK: return "Es wurde noch kein Default-Block angelegt";
       case KTO_CHECK_KEY_NOT_FOUND: return "Der angegebene Schl&uuml;ssel wurde im Default-Block nicht gefunden";
-      case LUT2_NO_LONGER_VALID_BETTER: return "Der Datensatz ist nicht mehr g&uuml;ltig, aber j&uuml;nger als der andere";
+      case LUT2_NO_LONGER_VALID_BETTER: return "Beide Datens&auml;tze sind nicht mehr g&uuml;ltig; dieser ist  aber j&uuml;nger als der andere";
       case DTA_SRC_KTO_DIFFERENT: return "Die Auftraggeber-Kontonummer des C-Datensatzes unterscheidet sich von der des A-Satzes";
       case DTA_SRC_BLZ_DIFFERENT: return "Die Auftraggeber-Bankleitzahl des C-Datensatzes unterscheidet sich von der des A-Satzes";
       case DTA_CR_LF_IN_FILE: return "Die DTA-Datei enth&auml;lt (unzul&auml;ssige) Zeilenvorsch&uuml;be";
@@ -15763,7 +15926,7 @@ DLL_EXPORT const char *kto_check_retval2utf8(int retval)
       case KTO_CHECK_DEFAULT_BLOCK_FULL: return "Die maximale Anzahl EintrÃ¤ge fÃ¼r den Default-Block wurde erreicht";
       case KTO_CHECK_NO_DEFAULT_BLOCK: return "Es wurde noch kein Default-Block angelegt";
       case KTO_CHECK_KEY_NOT_FOUND: return "Der angegebene SchlÃ¼ssel wurde im Default-Block nicht gefunden";
-      case LUT2_NO_LONGER_VALID_BETTER: return "Der Datensatz ist nicht mehr gÃ¼ltig, aber jÃ¼nger als der andere";
+      case LUT2_NO_LONGER_VALID_BETTER: return "Beide DatensÃ¤tze sind nicht mehr gÃ¼ltig; dieser ist  aber jÃ¼nger als der andere";
       case DTA_SRC_KTO_DIFFERENT: return "Die Auftraggeber-Kontonummer des C-Datensatzes unterscheidet sich von der des A-Satzes";
       case DTA_SRC_BLZ_DIFFERENT: return "Die Auftraggeber-Bankleitzahl des C-Datensatzes unterscheidet sich von der des A-Satzes";
       case DTA_CR_LF_IN_FILE: return "Die DTA-Datei enthÃ¤lt (unzulÃ¤ssige) ZeilenvorschÃ¼be";
@@ -16180,7 +16343,7 @@ DLL_EXPORT int cleanup_kto(void)
  * ###########################################################################
  */
 
-DLL_EXPORT char *get_kto_check_version(void)
+DLL_EXPORT const char *get_kto_check_version(void)
 {
    return "konto_check Version " VERSION " vom " VERSION_DATE " (kompiliert " __DATE__ ", " __TIME__ ")";
 }
@@ -16525,7 +16688,7 @@ DLL_EXPORT int rebuild_blzfile(char *inputname,char *outputname,UINT4 set)
  * ###########################################################################
  */
 
-DLL_EXPORT char *iban2bic(char *iban,int *retval,char *blz,char *kto)
+DLL_EXPORT const char *iban2bic(char *iban,int *retval,char *blz,char *kto)
 {
    char check[16],*ptr,*dptr;
    int i;
@@ -17161,8 +17324,14 @@ static int suche_int2(int a1,int a2,int *anzahl,int **start_idx,int **zweigstell
    else
       cnt=lut2_cnt;
    if(!blz_f){   /* Bankleitzahlen mit Filialen; eigenes Array erforderlich */
-      if(!(blz_f=calloc(cnt+10,sizeof(int))))return ERROR_MALLOC;
-      if(!(zweigstelle_f=calloc(cnt+10,sizeof(int))))return ERROR_MALLOC;
+      if(!(blz_f=calloc(cnt+10,sizeof(int)))){
+         FREE(zweigstelle_f);
+         return ERROR_MALLOC;
+      }
+      if(!(zweigstelle_f=calloc(cnt+10,sizeof(int)))){
+         FREE(blz_f);
+         return ERROR_MALLOC;
+      }
       for(i=j=0;i<lut2_cnt_hs;i++)if((n=filialen[i])>1){
          for(k=0;k<n;k++){
             zweigstelle_f[j]=k;
@@ -17176,7 +17345,14 @@ static int suche_int2(int a1,int a2,int *anzahl,int **start_idx,int **zweigstell
    }
    b_sort=*base_sort;
    if(!b_sort){
-      if(!(b_sort=calloc(cnt+10,sizeof(int))))return ERROR_MALLOC;
+      if(!(b_sort=calloc(cnt+10,sizeof(int)))){
+         if(blz_f!=blz)
+            FREE(blz_f);
+         else
+            blz_f=NULL;
+         FREE(zweigstelle_f);
+         return ERROR_MALLOC;
+      }
       *base_sort=b_sort;   /* Variable an aufrufende Funktion zurückgeben */
       for(i=0;i<cnt;i++)b_sort[i]=i;
       qsort(b_sort,cnt,sizeof(int),cmp);
@@ -17207,7 +17383,10 @@ static int suche_str(char *such_name,int *anzahl,int **start_idx,int **zweigstel
       cnt=lut2_cnt;
    if(!blz_f){   /* Bankleitzahlen mit Filialen; eigenes Array erforderlich */
       if(!(blz_f=calloc(cnt+10,sizeof(int))))return ERROR_MALLOC;
-      if(!(zweigstelle_f=calloc(cnt+10,sizeof(int))))return ERROR_MALLOC;
+      if(!(zweigstelle_f=calloc(cnt+10,sizeof(int)))){
+         FREE(blz_f);
+         return ERROR_MALLOC;
+      }
       for(i=j=0;i<lut2_cnt_hs;i++)if((n=filialen[i])>1){
          for(k=0;k<n;k++){
             zweigstelle_f[j]=k;
@@ -17223,7 +17402,11 @@ static int suche_str(char *such_name,int *anzahl,int **start_idx,int **zweigstel
    if(zweigstelle)*zweigstelle=zweigstelle_f;
    b_sort=*base_sort;
    if(!b_sort){
-      if(!(b_sort=calloc(cnt+10,sizeof(int))))return ERROR_MALLOC;
+      if(!(b_sort=calloc(cnt+10,sizeof(int)))){
+         FREE(blz_f);
+         FREE(zweigstelle_f);
+         return ERROR_MALLOC;
+      }
       *base_sort=b_sort;   /* Variable an aufrufende Funktion zurückgeben */
       for(i=0;i<cnt;i++)b_sort[i]=i;
       qsort(b_sort,cnt,sizeof(int),cmp);
@@ -17371,11 +17554,11 @@ DLL_EXPORT int kto_check_set_default(char *key,char *val)
 DLL_EXPORT int kto_check_set_default_bin(char *key,char *val,int size)
 {
    char *ptr;
-   int i,j,ret,default_rest;
+   int i,j,ret;
    unsigned long offset_k[DEFAULT_CNT],offset_v[DEFAULT_CNT];
 
    if(!default_buffer && (ret=kto_check_clear_default())!=OK)RETURN(ret); /* u.U. Initialisierung */
-   if((default_rest=default_ptr-default_buffer)<size+strlen(key)+1){   /* realloc notwendig */
+   if(((unsigned long)(default_ptr-default_buffer))<(unsigned long)size+strlen(key)+1){   /* realloc notwendig */
       for(i=0;i<default_cnt;i++){
          offset_k[i]=default_key[i]-default_buffer;
          offset_v[i]=default_val[i]-default_buffer;
@@ -17458,7 +17641,8 @@ static int kto_check_clear_default(void)
 DLL_EXPORT int kto_check_init_default(char *lut_name,int block_id)
 {
    UINT4 blocklen;
-   char *ptr,*ptr1,*data,name_buffer[LUT_PATH_LEN];
+   char *ptr,*data,name_buffer[LUT_PATH_LEN];
+   const char *ptr1;
    int ret,i,j,k;
    struct stat s_buf;
 
@@ -17483,7 +17667,7 @@ DLL_EXPORT int kto_check_init_default(char *lut_name,int block_id)
       /* Default-Block lesen */
    if(!block_id)block_id=LUT2_DEFAULT;
    if((ret=read_lut_block(lut_name,block_id,&blocklen,&data))!=OK)RETURN(ret);
-   if(default_bufsize<blocklen){
+   if(default_bufsize<(int)blocklen){
       if(!(ptr=realloc(default_buffer,default_bufsize+INITIAL_DEFAULT_BUFSIZE)))
          return ERROR_MALLOC;
       else
@@ -17595,7 +17779,8 @@ DLL_EXPORT int kto_check_default_keys(char ***keys,int *cnt)
 
 DLL_EXPORT int kto_check_write_default(char *lutfile,int block_id)
 {
-   char *buffer,*ptr,*dptr;
+   char *buffer,*dptr;
+   const char *ptr;
    int i,j;
 
    if(!(buffer=calloc(default_bufsize+default_cnt*4+58,1)))return ERROR_MALLOC;
@@ -17614,7 +17799,7 @@ DLL_EXPORT int kto_check_write_default(char *lutfile,int block_id)
 DLL_EXPORT const char *pz2str(int pz,int *ret)
 {
    if(ret){
-      if(pz>=137)
+      if(pz>=139)
          *ret=NOT_DEFINED;
       else
          *ret=OK;
@@ -18026,8 +18211,7 @@ XI kto_check_blz(char *blz,char *kto)EXCLUDED
 XI kto_check_pz(char *pz,char *kto,char *blz)EXCLUDED
 XI kto_check(char *pz_or_blz,char *kto,char *lut_name)EXCLUDED
 XI kto_check_t(char *pz_or_blz,char *kto,char *lut_name,KTO_CHK_CTX *ctx)EXCLUDED
-XC kto_check_str(char *pz_or_blz,char *kto,char *lut_name)EXCLUDED_S
-XC kto_check_str_t(char *pz_or_blz,char *kto,char *lut_name,KTO_CHK_CTX *ctx)EXCLUDED_S
+const XC kto_check_str(char *pz_or_blz,char *kto,char *lut_name)EXCLUDED_S
 XI cleanup_kto(void)EXCLUDED
 XI cleanup_kto_t(KTO_CHK_CTX *ctx)EXCLUDED
 XI generate_lut(char *inputname,char *outputname,char *user_info,int lut_version)EXCLUDED
@@ -18084,14 +18268,14 @@ XI lut_loeschung_i(int b,int zweigstelle,int *retval)EXCLUDED
 XI lut_nachfolge_blz(char *b,int zweigstelle,int *retval)EXCLUDED
 XI lut_nachfolge_blz_i(int b,int zweigstelle,int *retval)EXCLUDED
 XI lut_cleanup(void)EXCLUDED
-XC const kto_check_retval2txt(int retval)EXCLUDED_S
-XC const kto_check_retval2txt_short(int retval)EXCLUDED_S
-XC const kto_check_retval2html(int retval)EXCLUDED_S
-XC const kto_check_retval2dos(int retval)EXCLUDED_S
-XC const kto_check_retval2utf8(int retval)EXCLUDED_S
+const XC kto_check_retval2txt(int retval)EXCLUDED_S
+const XC kto_check_retval2txt_short(int retval)EXCLUDED_S
+const XC kto_check_retval2html(int retval)EXCLUDED_S
+const XC kto_check_retval2dos(int retval)EXCLUDED_S
+const XC kto_check_retval2utf8(int retval)EXCLUDED_S
 XI rebuild_blzfile(char *inputname,char *outputname,UINT4 set)EXCLUDED
 XI iban_check(char *iban,int *retval)EXCLUDED
-XC iban2bic(char *iban,int *retval,char *blz,char *kto)EXCLUDED_S
+const XC iban2bic(char *iban,int *retval,char *blz,char *kto)EXCLUDED_S
 XC iban_gen(char *kto,char *blz,int *retval)EXCLUDED_S
 XI ipi_gen(char *zweck,char *dst,char *papier)EXCLUDED
 XI ipi_check(char *zweck)EXCLUDED

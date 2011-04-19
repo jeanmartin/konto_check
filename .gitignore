@@ -20,6 +20,7 @@ tmtags
 coverage
 rdoc
 pkg
+*.gem
 
 ## PROJECT::SPECIFIC
 ext/konto_check/*.o

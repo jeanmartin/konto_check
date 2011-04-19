@@ -17,16 +17,16 @@ require 'rubygems'
 require 'rake'
 require 'rake/extensiontask'
 
-Rake::ExtensionTask.new('konto_check')
+Rake::ExtensionTask.new('kontocheck')
 
 begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
-    gem.name = "konto_check"
+    gem.name = "kontocheck"
     gem.summary = %Q{Checking german BICs/Bank account numbers}
-    gem.description = %Q{Check whether a certain bic/account-no-combination can possibly be valid. It uses the C library kontocheck (see http://sourceforge.net/projects/kontocheck/) by Michael Plugge.}
-    gem.email = "info@provideal.net"
-    gem.homepage = "http://github.com/provideal/konto_check"
+    gem.description = %Q{Check whether a certain bic/account-no-combination can possibly be valid. It uses the C library konto_check (see http://sourceforge.net/projects/kontocheck/) by Michael Plugge.}
+    gem.email = "jan@general-scripting.com"
+    gem.homepage = "http://github.com/jeanmartin/konto_check"
     gem.authors = ["Provideal Systems GmbH","Michael Plugge","Jan Schwenzien"]
     gem.add_development_dependency "thoughtbot-shoulda", ">= 0"
     #gem.files.exclude "ext"

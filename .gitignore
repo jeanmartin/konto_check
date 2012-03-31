@@ -27,3 +27,4 @@ ext/konto_check/*.o
 ext/konto_check/*.log
 ext/konto_check/*.bundle
 ext/konto_check/Makefile
+blz.lut

@@ -4,14 +4,14 @@
 # -*- encoding: utf-8 -*-
 
 Gem::Specification.new do |s|
-  s.name = %q{kontocheck}
-  s.version = "0.0.6"
+  s.name = "kontocheck"
+  s.version = "0.0.7"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Provideal Systems GmbH", "Michael Plugge", "Jan Schwenzien"]
-  s.date = %q{2011-04-16}
-  s.description = %q{Check whether a certain bic/account-no-combination can possibly be valid. It uses the C library konto_check (see http://sourceforge.net/projects/kontocheck/) by Michael Plugge.}
-  s.email = %q{jan@general-scripting.com}
+  s.date = "2012-03-31"
+  s.description = "Check whether a certain bic/account-no-combination can possibly be valid. It uses the C library konto_check (see http://sourceforge.net/projects/kontocheck/) by Michael Plugge."
+  s.email = "jan@general-scripting.com"
   s.extensions = ["ext/konto_check_raw/extconf.rb"]
   s.extra_rdoc_files = [
     "LICENSE",
@@ -29,18 +29,15 @@ Gem::Specification.new do |s|
     "ext/konto_check_raw/konto_check.h",
     "ext/konto_check_raw/konto_check_raw_ruby.c",
     "init.rb",
+    "kontocheck.gemspec",
     "lib/konto_check.rb",
     "test/helper.rb",
     "test/test_konto_check.rb"
   ]
-  s.homepage = %q{http://github.com/jeanmartin/konto_check}
+  s.homepage = "http://github.com/jeanmartin/konto_check"
   s.require_paths = ["lib"]
-  s.rubygems_version = %q{1.7.2}
-  s.summary = %q{Checking german BICs/Bank account numbers}
-  s.test_files = [
-    "test/helper.rb",
-    "test/test_konto_check.rb"
-  ]
+  s.rubygems_version = "1.8.15"
+  s.summary = "Checking german BICs/Bank account numbers"
 
   if s.respond_to? :specification_version then
     s.specification_version = 3

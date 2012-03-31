@@ -45,11 +45,27 @@
 
 /* 
  * ##########################################################################
- * # Die Berechnungsmethoden B8, C6 und D4 werden zum 6.6.11 geändert; mit  #
- * # dem folgenden Makro werden die neuen Berechnungsmethoden aktiviert.    #
+ * # Die Berechnungsmethoden B6 und D1 werden zum 5.9.11 geändert; mit dem  #
+ * # folgenden Makro werden die neuen Berechnungsmethoden aktiviert.        #
  * ##########################################################################
  */
-#define METHODE_NEU_2011_06_06 0
+#define METHODE_NEU_2011_09_05 1
+
+/* Das Makro DEFAULT_ENCODING legt die Ausgabe-Kodierung für die Funktion
+ * kto_check_retval2txt() und die Blocks Name, Kurzname und Ort aus der
+ * LUT-Datei fest. Die folgenden Werte sind möglich:
+ *
+ *    1: ISO-8859-1
+ *    2: UTF-8
+ *    3: HTML Entities
+ *    4: DOS CP-850
+ *
+ * Werte außerhalb dieses Bereichs dürften schnell zum Absturz führen, da
+ * einige Arrays damit initialisiert werden.
+ */
+
+#define DEFAULT_ENCODING 1
+#define KEEP_RAW_DATA    1
 
 /* 
  * ##########################################################################
@@ -223,6 +239,13 @@
 #define LUT2_NACHFOLGE_BLZ           13
 #define LUT2_NAME_NAME_KURZ          14
 #define LUT2_INFO                    15
+#define LUT2_BIC_SORT                16
+#define LUT2_NAME_SORT               17
+#define LUT2_NAME_KURZ_SORT          18
+#define LUT2_ORT_SORT                19
+#define LUT2_PLZ_SORT                20
+#define LUT2_PZ_SORT                 21
+#define LUT2_OWN_IBAN                22
 
 #define LUT2_2_BLZ                  101
 #define LUT2_2_FILIALEN             102
@@ -239,6 +262,13 @@
 #define LUT2_2_NACHFOLGE_BLZ        113
 #define LUT2_2_NAME_NAME_KURZ       114
 #define LUT2_2_INFO                 115
+#define LUT2_2_BIC_SORT             116
+#define LUT2_2_NAME_SORT            117
+#define LUT2_2_NAME_KURZ_SORT       118
+#define LUT2_2_ORT_SORT             119
+#define LUT2_2_PLZ_SORT             120
+#define LUT2_2_PZ_SORT              121
+#define LUT2_2_OWN_IBAN             122
 
 #define LUT2_DEFAULT                501
 
@@ -255,6 +285,7 @@ extern const char *lut2_feld_namen[256];
  */
 
 #undef FALSE
+#define NO_OWN_IBAN_CALCULATION               -113
 #define KTO_CHECK_UNSUPPORTED_COMPRESSION     -112
 #define KTO_CHECK_INVALID_COMPRESSION_LIB     -111
 #define OK_UNTERKONTO_ATTACHED                -110
@@ -456,8 +487,8 @@ typedef struct{
  * # Dieser Parameter gibt an, wieviele Slots das Inhaltsverzeichnis einer  #
  * # LUT-Datei mindestens haben soll. Für jeden Block in der LUT-Datei wird #
  * # ein Slot im Inhaltsverzeichnis benötigt; bei einer LUT-Datei mit allen #
- * # Einträgen (Level 9) sind das 12 Slots, falls zwei Datensätze in der    #
- * # Datei gehalten werden sollen, 24 (Mindestanzahl!).                     #
+ * # Einträgen (Level 9) sind das 19 Slots, falls zwei Datensätze in der    #
+ * # Datei gehalten werden sollen, 38 (inklusive Indexblocks).              #
  * #                                                                        #
  * # Das Slotverzeichnis ist eine relativ einfache Datenstruktur; es        #
  * # enthält für jeden Slot nur drei 4 Byte-Integers (Typ, Offset und       #
@@ -472,7 +503,7 @@ typedef struct{
  * #                                                                        #
  * ##########################################################################
  */
-#define SLOT_CNT_MIN 25
+#define SLOT_CNT_MIN 40
 
 /*
  * ##########################################################################
@@ -714,6 +745,7 @@ DLL_EXPORT int kto_check_init2(char *lut_name);
 DLL_EXPORT int *lut2_status(void);
 DLL_EXPORT int kto_check_init_p(char *lut_name,int required,int set,int incremental);
 DLL_EXPORT int lut_info(char *lut_name,char **info1,char **info2,int *valid1,int *valid2);
+DLL_EXPORT const char *current_lutfile_name(int *set,int *level,int *retval);
 DLL_EXPORT int lut_valid(void);
 DLL_EXPORT int get_lut_info2(char *lut_name,int *version_p,char **prolog_p,char **info_p,char **user_info_p);
 DLL_EXPORT int get_lut_info_b(char **info,char *lutname);
@@ -758,15 +790,17 @@ DLL_EXPORT int lut_loeschung(char *b,int zweigstelle,int *retval);
 DLL_EXPORT int lut_loeschung_i(int b,int zweigstelle,int *retval);
 DLL_EXPORT int lut_nachfolge_blz(char *b,int zweigstelle,int *retval);
 DLL_EXPORT int lut_nachfolge_blz_i(int b,int zweigstelle,int *retval);
+DLL_EXPORT int lut_keine_iban_berechnung(char *iban_blacklist,char *lutfile,int set);
 
    /* Suche von BLZs */
-DLL_EXPORT int lut_suche_bic(char *such_name,int *anzahl,int **start_idx,int **zweigstelle,char ***base_name,int **blz_base);
-DLL_EXPORT int lut_suche_namen(char *such_name,int *anzahl,int **start_idx,int **zweigstelle,char ***base_name,int **blz_base);
-DLL_EXPORT int lut_suche_namen_kurz(char *such_name,int *anzahl,int **start_idx,int **zweigstelle,char ***base_name,int **blz_base);
-DLL_EXPORT int lut_suche_ort(char *such_name,int *anzahl,int **start_idx,int **zweigstelle,char ***base_name,int **blz_base);
-DLL_EXPORT int lut_suche_blz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstelle,int **base_name,int **blz_base);
-DLL_EXPORT int lut_suche_pz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstelle,int **base_name,int **blz_base);
-DLL_EXPORT int lut_suche_plz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstelle,int **base_name,int **blz_base);
+DLL_EXPORT int lut_suche_bic(char *such_name,int *anzahl,int **start_idx,int **zweigstelle_base,char ***base_name,int **blz_base);
+DLL_EXPORT int lut_suche_namen(char *such_name,int *anzahl,int **start_idx,int **zweigstelle_base,char ***base_name,int **blz_base);
+DLL_EXPORT int lut_suche_namen_kurz(char *such_name,int *anzahl,int **start_idx,int **zweigstelle_base,char ***base_name,int **blz_base);
+DLL_EXPORT int lut_suche_ort(char *such_name,int *anzahl,int **start_idx,int **zweigstelle_base,char ***base_name,int **blz_base);
+DLL_EXPORT int lut_suche_blz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstelle_base,int **base_name,int **blz_base);
+DLL_EXPORT int lut_suche_pz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstelle_base,int **base_name,int **blz_base);
+DLL_EXPORT int lut_suche_plz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstelle_base,int **base_name,int **blz_base);
+DLL_EXPORT int konto_check_idx2blz(int idx,int *zweigstelle,int *retval);
 
    /* (Benutzerdefinierte) Default-Werte in der LUT-Datei lesen und schreiben */
 #define DEFAULT_CNT 50                 /* Anzahl Einträge (fest) */
@@ -789,14 +823,18 @@ DLL_EXPORT int ipi_gen(char *zweck,char *dst,char *papier);
 DLL_EXPORT int ipi_check(char *zweck);
 
    /* Rückgabewerte in Klartext umwandeln */
+DLL_EXPORT int kto_check_encoding(int mode);
+DLL_EXPORT int keep_raw_data(int mode);
+DLL_EXPORT const char *kto_check_encoding_str(int mode);
 DLL_EXPORT const char *kto_check_retval2txt(int retval);
+DLL_EXPORT const char *kto_check_retval2iso(int retval);
 DLL_EXPORT const char *kto_check_retval2txt_short(int retval);
 DLL_EXPORT const char *kto_check_retval2html(int retval);
 DLL_EXPORT const char *kto_check_retval2utf8(int retval);
 DLL_EXPORT const char *kto_check_retval2dos(int retval);
 
    /* Prüfziffer (numerisch) in String umwandeln */
-DLL_EXPORT const char *pz2str(int pz,int *ret);
+const DLL_EXPORT char *pz2str(int pz,int *ret);
 
 /*
  * ######################################################################

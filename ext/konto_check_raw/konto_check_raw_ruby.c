@@ -281,6 +281,52 @@ static VALUE konto_check(int argc,VALUE* argv,VALUE self)
    return rb_ary_new3(2,retval>0?Qtrue:Qfalse,INT2FIX(retval));
 }
 
+/**
+ * KontoCheck::konto_check(<blz>, <kto>, <pz>)
+ *
+ * check whether the given account number kto kann possibly be
+ * a valid number of the bank with the bic blz.
+ *
+ * possible return values (and short description):
+ *
+ *    LUT2_NOT_INITIALIZED    "die Programmbibliothek wurde noch nicht initialisiert"
+ *    MISSING_PARAMETER       "Bei der Kontoprüfung fehlt ein notwendiger Parameter (BLZ oder Konto)"
+ *    
+ *    NOT_IMPLEMENTED         "die Methode wurde noch nicht implementiert"
+ *    UNDEFINED_SUBMETHOD     "Die (Unter)Methode ist nicht definiert"
+ *    INVALID_BLZ             "Die (Unter)Methode ist nicht definiert"
+ *    INVALID_BLZ_LENGTH      "die Bankleitzahl ist nicht achtstellig"
+ *    INVALID_KTO             "das Konto ist ungültig"
+ *    INVALID_KTO_LENGTH      "ein Konto muß zwischen 1 und 10 Stellen haben"
+ *    FALSE                   "falsch"
+ *    NOT_DEFINED             "die Methode ist nicht definiert"
+ *    BAV_FALSE               "BAV denkt, das Konto ist falsch (konto_check hält es für richtig)"
+ *    OK                      "ok"
+ *    OK_NO_CHK               "ok, ohne Prüfung"
+ */
+static VALUE konto_check_pz(int argc,VALUE* argv,VALUE self)
+{
+   char kto[16],blz[16], pz[3],error_msg[512];
+   int retval, len;
+   strncpy(blz,RSTRING_PTR(argv[0]),15);
+   if((len=RSTRING_LEN(argv[0]))>15)len=15;
+   *(blz+len)=0;
+
+  strncpy(kto,RSTRING_PTR(argv[1]),15);
+   if((len=RSTRING_LEN(argv[1]))>15)len=15;
+   *(kto+len)=0;
+
+  strncpy(pz,RSTRING_PTR(argv[2]),2);
+   if((len=RSTRING_LEN(argv[2]))>2)len=2;
+   *(pz+len)=0;
+
+
+   if((retval=kto_check_pz(pz,kto,blz))==LUT2_NOT_INITIALIZED || retval==MISSING_PARAMETER)RUNTIME_ERROR(retval);
+   return rb_ary_new3(2,retval>0?Qtrue:Qfalse,INT2FIX(retval));
+}
+
+
+
 
 /**
  * KontoCheck::init([lutfile[,level[,set]]])
@@ -1413,6 +1459,7 @@ void Init_konto_check_raw()
    rb_define_module_function(KontoCheck,"init",init,-1);
    rb_define_module_function(KontoCheck,"free",free_rb,0);
    rb_define_module_function(KontoCheck,"konto_check",konto_check,-1);
+   rb_define_module_function(KontoCheck,"konto_check_pz",konto_check_pz,-1);
    rb_define_module_function(KontoCheck,"bank_valid",bank_valid,-1);
    rb_define_module_function(KontoCheck,"bank_filialen",bank_filialen,-1);
    rb_define_module_function(KontoCheck,"bank_alles",bank_alles,-1);

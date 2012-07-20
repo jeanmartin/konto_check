@@ -5,7 +5,7 @@
 
 Gem::Specification.new do |s|
   s.name = "kontocheck"
-  s.version = "0.0.8"
+  s.version = "0.0.9"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Provideal Systems GmbH", "Michael Plugge", "Jan Schwenzien"]
@@ -37,7 +37,7 @@ Gem::Specification.new do |s|
   ]
   s.homepage = "http://github.com/jeanmartin/konto_check"
   s.require_paths = ["lib"]
-  s.rubygems_version = "1.8.24"
+  s.rubygems_version = "1.8.11"
   s.summary = "Checking german BICs/Bank account numbers"
 
   if s.respond_to? :specification_version then

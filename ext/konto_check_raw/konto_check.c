@@ -48,9 +48,9 @@
 
 /* Definitionen und Includes  */
 #ifndef VERSION
-#define VERSION "4.0"
+#define VERSION "4.2"
 #endif
-#define VERSION_DATE "2011-07-26"
+#define VERSION_DATE "2012-10-24"
 
 #ifndef INCLUDE_KONTO_CHECK_DE
 #define INCLUDE_KONTO_CHECK_DE 1
@@ -121,6 +121,33 @@ static char verbose_debug_buffer[128];
 #else
 #define PRINT_VERBOSE_DEBUG_FILE(msg)
 #endif
+
+   /* einige Definitionen f¸r die zusammengesetzte Suche */
+
+#define LUT_SUCHE_MAX_CNT 26
+#define SUCHE_STD 1
+#define SUCHE_NOT 2
+
+typedef struct {
+   int such_typ;
+   int suche_int1;
+   int suche_int2;
+   char *suche_str;
+} LUT_SUCHE;
+
+typedef struct{
+   int uniq;
+   int anzahl;
+   LUT_SUCHE suche[LUT_SUCHE_MAX_CNT];
+} LUT_SUCHE_ARR;
+
+typedef struct {
+   int cnt;
+   int *start_idx;
+} LUT_SUCHERGEBNIS[LUT_SUCHE_MAX_CNT];
+
+static LUT_SUCHE_ARR **lut_suche_arr;
+static int last_lut_suche_idx;
 
    /* Kodierung der Ausgabe und Statusmeldungen (ISO8859-1, CP850, UTF-8, HTML)
     * encoding gibt die Soll-Kodierung, current_encoding die jeweils aktuelle
@@ -346,10 +373,11 @@ static int convert_encoding(char **data,UINT4 *len);
 #define CHECK_RETURN(fkt) do{if((retval=fkt)!=OK)return retval;}while(0)
 
    /* einige Makros zur Umwandlung zwischen unsigned int und char */
-#define UCP (unsigned char*)
-#define SCP (char*)
-#define ULP (unsigned long *)
-#define UI  (unsigned int)(unsigned char)
+#define UCP  (unsigned char*)
+#define UCPP (unsigned char**)
+#define SCP  (char*)
+#define ULP  (unsigned long *)
+#define UI   (unsigned int)(unsigned char)
 
 #define C2UI(x,p) do{x=((unsigned char)*p)+((unsigned char)*(p+1))*0x100UL; p+=2;} while(0)
 #define UI2C(x,p) do{*p++=(char)(x)&0xff; *p++=(char)((x)>>8)&0xff;} while(0)
@@ -394,10 +422,10 @@ DLL_EXPORT_V int
     lut_set_3[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME,LUT2_PLZ,LUT2_ORT,0}, /* 6+4 Slots */
     lut_set_4[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME,LUT2_PLZ,LUT2_ORT,LUT2_BIC,0}, /* 7+5 Slots */
     lut_set_5[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,0}, /* 7+6 Slots */
-    lut_set_6[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,LUT2_NACHFOLGE_BLZ,0}, /* 8+6 Slots */
-    lut_set_7[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,LUT2_NACHFOLGE_BLZ,LUT2_AENDERUNG,0}, /* 9+6 Slots */
-    lut_set_8[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,LUT2_NACHFOLGE_BLZ,LUT2_AENDERUNG,LUT2_LOESCHUNG,0}, /* 10+6 Slots */
-    lut_set_9[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,LUT2_NACHFOLGE_BLZ,LUT2_AENDERUNG,LUT2_LOESCHUNG,LUT2_PAN,LUT2_NR,0}, /* 12+6 Slots */
+    lut_set_6[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,LUT2_NACHFOLGE_BLZ,0}, /* 8+6+2 Slots */
+    lut_set_7[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,LUT2_NACHFOLGE_BLZ,LUT2_AENDERUNG,0}, /* 9+6+2 Slots */
+    lut_set_8[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,LUT2_NACHFOLGE_BLZ,LUT2_AENDERUNG,LUT2_LOESCHUNG,0}, /* 10+6+2 Slots */
+    lut_set_9[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,LUT2_NACHFOLGE_BLZ,LUT2_AENDERUNG,LUT2_LOESCHUNG,LUT2_PAN,LUT2_NR,0}, /* 12+6+2 Slots */
 
     lut_set_o0[]={LUT2_BLZ,LUT2_PZ,0},
     lut_set_o1[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_KURZ,0},
@@ -405,10 +433,10 @@ DLL_EXPORT_V int
     lut_set_o3[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME,LUT2_PLZ,LUT2_ORT,0},
     lut_set_o4[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME,LUT2_PLZ,LUT2_ORT,LUT2_BIC,0},
     lut_set_o5[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,0},
-    lut_set_o6[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,LUT2_NACHFOLGE_BLZ,0},
-    lut_set_o7[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,LUT2_NACHFOLGE_BLZ,LUT2_AENDERUNG,0},
-    lut_set_o8[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,LUT2_NACHFOLGE_BLZ,LUT2_AENDERUNG,LUT2_LOESCHUNG,0},
-    lut_set_o9[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,LUT2_NACHFOLGE_BLZ,LUT2_AENDERUNG,LUT2_LOESCHUNG,LUT2_PAN,LUT2_NR,0};
+    lut_set_o6[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,LUT2_NACHFOLGE_BLZ,LUT2_VOLLTEXT_TXT,0},
+    lut_set_o7[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,LUT2_NACHFOLGE_BLZ,LUT2_VOLLTEXT_TXT,LUT2_AENDERUNG,0},
+    lut_set_o8[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,LUT2_NACHFOLGE_BLZ,LUT2_VOLLTEXT_TXT,LUT2_AENDERUNG,LUT2_LOESCHUNG,0},
+    lut_set_o9[]={LUT2_BLZ,LUT2_PZ,LUT2_NAME_NAME_KURZ,LUT2_PLZ,LUT2_ORT,LUT2_BIC,LUT2_NACHFOLGE_BLZ,LUT2_VOLLTEXT_TXT,LUT2_AENDERUNG,LUT2_LOESCHUNG,LUT2_PAN,LUT2_NR,0};
 
 #define COMPRESSION_DEFAULT COMPRESSION_ZLIB
 
@@ -514,32 +542,35 @@ static int leer_zahl[256];
     */
 static char **qs_zeilen,*qs_hauptstelle;
 static int *qs_blz,*qs_plz,*qs_sortidx;
+
 static unsigned char ee[500],*eeh,*eep,eec[]={
-   0x78,0xda,0x75,0x8f,0x41,0x0e,0xc2,0x20,0x10,0x45,0x5d,0x73,0x8a,
-   0x39,0x81,0x27,0x68,0xba,0x32,0xba,0x35,0xf1,0x04,0xb4,0xfc,0x02,
-   0x11,0xa8,0x01,0x6a,0x13,0xaf,0xe7,0xc5,0x1c,0x69,0xa2,0xd5,0xd0,
-   0x0d,0xc9,0xfc,0x97,0xe1,0xcf,0x7b,0x1e,0x64,0xa2,0xab,0x83,0x0d,
-   0xa0,0x38,0x66,0xd0,0x79,0x40,0x54,0x42,0x71,0x6a,0x64,0xa6,0x64,
-   0x7b,0x43,0x93,0xd7,0x50,0x11,0x26,0x8b,0x29,0xa8,0x12,0x7b,0xcb,
-   0xe8,0xbd,0xe3,0xe9,0xd2,0x9b,0x59,0x86,0x87,0x50,0x16,0x74,0x74,
-   0x16,0x1a,0x24,0x3b,0x8d,0x19,0x26,0xe6,0x75,0x38,0xcb,0x48,0x81,
-   0x7f,0xcb,0xa4,0x26,0xef,0x45,0x62,0xe2,0x25,0x8f,0xa0,0xc4,0xf3,
-   0xf7,0x29,0x1d,0x83,0x1b,0x75,0x29,0xb9,0x5b,0x38,0x3a,0xa1,0x8b,
-   0x85,0xf8,0xb4,0xba,0x91,0x0c,0x38,0xdd,0x8b,0x9d,0x68,0x6e,0x6d,
-   0xd5,0xa2,0xe9,0x62,0xbb,0x61,0x52,0xd0,0xb6,0xcd,0xb2,0x59,0x31,
-   0xfa,0x07,0xbf,0x56,0x85,0x6e,0x9a,0x7d,0x3a,0xab,0x76,0x0b,0xad,
-   0x19,0xb2,0x9e,0xd8,0xbd,0x00,0x15,0x07,0x95,0x46,0x00
+   0x78,0xda,0x75,0x8f,0xc1,0x0d,0xc2,0x30,0x0c,0x45,0x39,0x7b,0x0a,
+   0x4f,0xc0,0x04,0x55,0x4f,0x08,0xae,0x48,0x4c,0x90,0x36,0x6e,0x12,
+   0x11,0xa7,0x28,0x49,0xa9,0xc4,0x80,0xcc,0x85,0x49,0x25,0x28,0x28,
+   0xbd,0x44,0xf2,0x7f,0x72,0xbe,0xdf,0x13,0xe0,0xa0,0x12,0x5e,0x3d,
+   0xb9,0x40,0x18,0xc7,0x4c,0x78,0x1e,0x28,0x6a,0xd0,0x92,0x5a,0x95,
+   0x31,0xb9,0xde,0xe2,0xc4,0x86,0x74,0x24,0x9b,0x61,0x0a,0xba,0xc4,
+   0xec,0x04,0xbd,0x77,0x18,0x2f,0xbd,0x9d,0x55,0x78,0x80,0x76,0x84,
+   0x47,0xef,0xc8,0x10,0xaa,0xce,0xd0,0x4c,0x36,0xe6,0x75,0x38,0xab,
+   0x88,0x41,0x7e,0xcb,0xa8,0x27,0x66,0x48,0x42,0x58,0xc9,0x48,0x98,
+   0x64,0xfe,0x3e,0xa5,0x63,0xf0,0xa3,0x29,0x25,0x77,0x47,0x1e,0x4f,
+   0xd4,0xc5,0x42,0x38,0xad,0x6e,0x44,0x4b,0x92,0xee,0x01,0x76,0xd0,
+   0xdc,0xda,0xaa,0x46,0xd3,0xc5,0x76,0x43,0xa5,0xa0,0x6d,0x9d,0x65,
+   0xb3,0xa2,0xf4,0x0f,0x7e,0xb5,0x0a,0xdd,0x54,0xfb,0x74,0x56,0xf5,
+   0x16,0x5a,0x53,0x14,0x3d,0xd8,0xbd,0x00,0x8b,0x59,0x95,0x67,0x00
 };
-#define EE 14
+#define EE 16
 
    /* Arrays f¸r die Felder der LUT-Datei u.a. */
 static char *lut_prolog,*lut_sys_info,*lut_user_info;
-static char **name,**name_kurz,**ort,*name_data,*name_name_kurz_data,*name_kurz_data,*ort_data,**bic,*bic_buffer,*aenderung,*loeschung;
-static int lut_version,*blz,*startidx,*plz,*filialen,*pan,*pz_methoden,*bank_nr,*nachfolge_blz,*own_iban,own_iban_cnt;
+static char **name,**name_kurz,**ort,*name_data,*name_name_kurz_data,*name_kurz_data,
+            *ort_data,**bic,*bic_buffer,*aenderung,*loeschung,**volltext,*volltext_data;
+static int lut_version,*blz,*startidx,*plz,*filialen,*pan,*pz_methoden,*bank_nr,*nachfolge_blz,
+           *own_iban,own_iban_cnt,vt_cnt,vt_cnt_uniq,*volltext_banken,*volltext_start;
 static volatile int init_status,init_in_progress;
 
    /* Arrays f¸r die Suche nach verschiedenen Feldern */
-static int *blz_f,*zweigstelle_f,*zweigstelle_f1,*sort_bic,*sort_name,*sort_name_kurz,*sort_ort,*sort_blz,*sort_pz_methoden,*sort_plz;
+static int *blz_f,*pz_f,*zweigstelle_f,*zweigstelle_f1,*sort_volltext,*sort_bic,*sort_name,*sort_name_kurz,*sort_ort,*sort_blz,*sort_pz_f,*sort_plz;
 
    /* Arrays zur Umwandlung von ASCII nach Zahlen */
 static unsigned int b0[256],b1[256],b2[256],b3[256],b4[256],b5[256],b6[256],b7[256],b8[256],
@@ -605,16 +636,20 @@ static int lut_multiple_int(int idx,int *cnt,int **p_blz,char  ***p_name,char **
 static int read_lut(char *filename,int *cnt_blz);
 static void init_atoi_table(void);
 static int init_blzf(int *cnt_p);
-static int suche_str(char *such_name,int *anzahl,int **start_idx,int **zweigstelle_base,int **blz_base,
+static int suche_str(char *such_name,int *anzahl,int **start_idx,int **zweigstellen_base,int **blz_base,
    char ***base_name,int **base_sort,int(*cmp)(const void *, const void *),UINT4 such_idx);
-static int suche_int1(int a1,int a2,int *anzahl,int **start_idx,int **zweigstelle_base,int **blz_base,
+static int suche_int1(int a1,int a2,int *anzahl,int **start_idx,int **zweigstellen_base,int **blz_base,
    int **base_name,int **base_sort,int(*cmp)(const void *, const void *),int cnt,int such_idx);
-static int suche_int2(int a1,int a2,int *anzahl,int **start_idx,int **zweigstelle_base,int **blz_base,
-   int **base_name,int **base_sort,int(*cmp)(const void *, const void *),int such_idx);
+static int suche_int2(int a1,int a2,int *anzahl,int **start_idx,int **zweigstellen_base,int **blz_base,
+   int **base_name,int **base_sort,int(*cmp)(const void *, const void *),int such_idx,int pz_suche);
 static int binary_search(char *a,char **base,int *sort_a,int cnt,int *unten,int *anzahl);
 static int get_sortc(char **a,int enc);
+static int volltext_zeichen(unsigned char **c);
 static int stri_cmp(char *a,char *b);
 static int strni_cmp(char *ap,char *bp);
+static int *lut_suche_multiple_and(int *such_array,int *start1,int cnt1,int *start2,int cnt2,int *cnt,int *retval);
+static int *lut_suche_multiple_or(int *such_array1,int **such_array2,int *cnt);
+static int *lut_suche_multiple_not(int *such_array1,int **such_array2,int *cnt);
 static int qcmp_name(const void *ap,const void *bp);
 static int qcmp_ort(const void *ap,const void *bp);
 static int qcmp_sortc(const void *ap,const void *bp);
@@ -1886,6 +1921,137 @@ static int write_lutfile_entry_de(UINT4 typ,int auch_filialen,int bank_cnt,char 
          }
          CHECK_RETURN(write_lut_block_int(lut,typ,dptr-data,data));
          break;
+
+      case LUT2_VOLLTEXT_TXT:  /* Volltext-Suchindex: zun‰chst die Daten sammeln */
+      case LUT2_2_VOLLTEXT_TXT:
+
+            /* f¸r die Volltextsuche werden die folgenden Daten aufgenommen:
+             *
+             *    Name (9...66)
+             *    Ort (72...106)
+             *    Kurzname (107...133)
+             *
+             */
+         {
+            char **vt_ptr,*ptr1;
+            int *vt_idx,*vt_bank,cnt,vt_cnt_max,vt_cnt_uniq,vt_buflen_uniq,idx;
+            int *vt_array,*vt_cnt_uniq_array,vt_cnt_1,vt_cnt_array,vt_a1;
+
+   /* Initialwert Anzahl Worte; wird per realloc() vergrˆﬂert */
+#define VT_CNT 100000
+
+            vt_cnt_max=VT_CNT;
+            if(!(vt_ptr=malloc((vt_cnt_max+100)*sizeof(char*))))return ERROR_MALLOC;
+            if(!(vt_bank=malloc((vt_cnt_max+100)*sizeof(int))))return ERROR_MALLOC;
+            dptr=data=out_buffer;
+            for(*vt_bank=cnt=i=j=0,dptr=*vt_ptr=data;i<bank_cnt;i++)if(auch_filialen || qs_hauptstelle[qs_sortidx[i]]=='1'){
+               if(cnt>vt_cnt_max){
+                  vt_cnt_max+=10000;
+                  if(!(vt_ptr=realloc(vt_ptr,(vt_cnt_max+100)*sizeof(char*))))return ERROR_MALLOC;
+                  if(!(vt_bank=realloc(vt_bank,(vt_cnt_max+100)*sizeof(int))))return ERROR_MALLOC;
+               }
+               zptr=qs_zeilen[qs_sortidx[i]];
+               for(ptr=zptr+9;ptr<zptr+67;)
+                  if(volltext_zeichen(UCPP &ptr))
+                     *dptr++=*ptr++;
+                  else{
+                     *dptr++=0;
+                     if(*vt_ptr[cnt])cnt++;
+                     vt_ptr[cnt]=dptr;
+                     vt_bank[cnt]=j;
+                     while(!volltext_zeichen(UCPP &ptr) && ptr<(zptr+67))ptr++;
+                  }
+               *dptr++=0;
+               if(*vt_ptr[cnt])cnt++;
+               vt_ptr[cnt]=dptr;
+               vt_bank[cnt]=j;
+               for(ptr=zptr+72;ptr<zptr+107;)
+                  if(volltext_zeichen(UCPP &ptr))
+                     *dptr++=*ptr++;
+                  else{
+                     *dptr++=0;
+                     if(*vt_ptr[cnt])cnt++;
+                     vt_ptr[cnt]=dptr;
+                     vt_bank[cnt]=j;
+                     while(!volltext_zeichen(UCPP &ptr) && ptr<(zptr+107))ptr++;
+                  }
+               *dptr++=0;
+               if(*vt_ptr[cnt])cnt++;
+               vt_ptr[cnt]=dptr;
+               vt_bank[cnt]=j;
+               for(ptr=zptr+107;ptr<zptr+134;)
+                  if(volltext_zeichen(UCPP &ptr))
+                     *dptr++=*ptr++;
+                  else{
+                     *dptr++=0;
+                     if(*vt_ptr[cnt])cnt++;
+                     vt_ptr[cnt]=dptr;
+                     vt_bank[cnt]=j;
+                     while(!volltext_zeichen(UCPP &ptr) && ptr<(zptr+134))ptr++;
+                  }
+               *dptr++=0;
+               j++;
+               if(*vt_ptr[cnt])cnt++;
+               vt_ptr[cnt]=dptr;
+               vt_bank[cnt]=j;
+            }
+            *dptr++=0;
+
+            if(!(vt_idx=malloc((cnt)*sizeof(int))))return ERROR_MALLOC;
+            for(i=0;i<cnt;i++)vt_idx[i]=i;
+            sortc_buf=vt_ptr;
+            qsort(vt_idx,cnt,sizeof(int),qcmp_sortc);
+            vt_buflen_uniq=strlen(vt_ptr[vt_idx[0]])+1;
+            vt_a1=vt_bank[vt_idx[0]];
+            for(i=0,vt_cnt_uniq=1;i<cnt;i++){
+               if(!stri_cmp(ptr,vt_ptr[vt_idx[i]])){   /* Dublette Wort */
+                  continue;
+               }
+               ptr=vt_ptr[vt_idx[i]];
+               vt_buflen_uniq+=strlen(ptr)+1;
+               vt_cnt_uniq++;
+               vt_a1=vt_bank[vt_idx[i]];
+            }
+            if(!(data=dptr=malloc(vt_buflen_uniq+100)))return ERROR_MALLOC;
+            if(!(vt_cnt_uniq_array=malloc((vt_cnt_uniq+cnt+50)*sizeof(int))))return ERROR_MALLOC;
+            vt_array=vt_cnt_uniq_array+vt_cnt_uniq;
+            for(ptr=ptr1=vt_ptr[vt_idx[0]];(*dptr++=*ptr1++););
+            vt_a1=vt_cnt_1=0;
+            for(vt_cnt_array=i=j=0,k=0;i<cnt;i++){
+               idx=vt_idx[i];
+               if(!stri_cmp(ptr,vt_ptr[idx])){   /* Dublette Wort */
+                  if(vt_bank[idx]!=vt_a1){   /* keine Dublette Bank */
+                     vt_a1=vt_array[k++]=vt_bank[idx];
+                     vt_cnt_1++;
+                  }
+                  continue;
+               }
+               vt_cnt_uniq_array[j++]=vt_cnt_1;
+               vt_cnt_array+=vt_cnt_1;
+               vt_a1=vt_array[k++]=vt_bank[idx];
+               vt_cnt_1=1;
+               for(ptr=ptr1=vt_ptr[idx];(*dptr++=*ptr1++););
+               i--;
+            }
+            vt_cnt_array+=vt_cnt_1;
+            vt_cnt_uniq_array[j]=vt_cnt_1;
+            CHECK_RETURN(write_lut_block_int(lut,typ,dptr-data,data));
+            free(data); /* Speicher f¸r uniq text */
+
+               /* Index-Block f¸r Volltextsuche generieren */
+            dptr=data=out_buffer;
+            UL2C(vt_cnt_uniq,dptr);
+            UL2C(vt_cnt_array,dptr);
+            for(i=0;i<vt_cnt_uniq;i++)UI2C(vt_cnt_uniq_array[i],dptr);
+            for(i=0;i<vt_cnt_array;i++)UI2C(vt_array[i],dptr);
+            CHECK_RETURN(write_lut_block_int(lut,LUT2_VOLLTEXT_IDX+(typ-LUT2_VOLLTEXT_TXT),dptr-data,data));
+
+            free(vt_idx);
+            free(vt_bank);
+            free(vt_ptr);
+            free(vt_cnt_uniq_array);
+         }
+         break;
    }
    return OK;
 }
@@ -1930,12 +2096,13 @@ DLL_EXPORT int generate_lut2_p(char *inputname,char *outputname,char *user_info,
       case 7:  felder1=(UINT4 *)lut_set_7; if(!slots)slots=50; break;   /* 16 Slots/Satz */
       case 8:  felder1=(UINT4 *)lut_set_8; if(!slots)slots=50; break;   /* 17 Slots/Satz */
       case 9:  felder1=(UINT4 *)lut_set_9; if(!slots)slots=50; break;   /* 19 Slots/Satz */
-      default: felder1=(UINT4 *)lut_set_9; if(!slots)slots=50; break;   /* 19 Slots/Satz */
+      default: felder1=(UINT4 *)NULL;      if(!slots)slots=50; break;   /* 19 Slots/Satz */
    }
    i=0;
    felder2[i++]=LUT2_BLZ;
    felder2[i++]=LUT2_PZ;
    if(filialen)felder2[i++]=LUT2_FILIALEN;
+   if(filialen)felder2[i++]=LUT2_VOLLTEXT_TXT;
    for(j=0;i<MAX_SLOTS && felder1[j];)felder2[i++]=felder1[j++];
    felder2[i]=0;
 
@@ -2713,7 +2880,7 @@ DLL_EXPORT int lut_info(char *lut_name,char **info1,char **info2,int *valid1,int
 DLL_EXPORT int get_lut_info2(char *lut_name,int *version_p,char **prolog_p,char **info_p,char **user_info_p)
 {
    char *buffer,*ptr,*sptr,*info=(char*)"",*user_info=(char*)"",name_buffer[LUT_PATH_LEN];
-   int i,j,k,buflen,version,zeile,compression_mode;
+   int i,j,k,buflen,version,zeile;
    unsigned long offset1,offset2;
    struct stat s_buf;
    FILE *lut;
@@ -2721,7 +2888,6 @@ DLL_EXPORT int get_lut_info2(char *lut_name,int *version_p,char **prolog_p,char 
    if(prolog_p)*prolog_p=NULL;
    if(info_p)*info_p=NULL;
    if(user_info_p)*user_info_p=NULL;
-   compression_mode=0;  /* keine Angabe:gzip */
 
       /* falls keine LUT-Datei angegeben wurde, die Suchpfade und Defaultnamen durchprobieren */
    if(!lut_name || !*lut_name){
@@ -2955,7 +3121,7 @@ DLL_EXPORT int *lut2_status(void)
 DLL_EXPORT int get_lut_id(char *lut_name,int set,char *id)
 {
    char *info,*info1,*info2,*ptr,*dptr;
-   int ret,valid,valid1,valid2;
+   int valid,valid1,valid2;
 
    *id=0;
    info=info1=info2=NULL;
@@ -2970,7 +3136,7 @@ DLL_EXPORT int get_lut_id(char *lut_name,int set,char *id)
    else
       switch(set){
          case 0:  /* beide Sets laden, und das g¸ltige nehmen; falls keines g¸ltig ist, das j¸ngere oder Set 1 */
-            ret=lut_info(lut_name,&info1,&info2,&valid1,&valid2);
+            lut_info(lut_name,&info1,&info2,&valid1,&valid2);
             if(valid1==LUT1_SET_LOADED)RETURN(LUT1_FILE_USED);
             if(valid1==LUT2_VALID){
                info=info1;
@@ -3004,12 +3170,12 @@ DLL_EXPORT int get_lut_id(char *lut_name,int set,char *id)
             break;
 
          case 1:  /* nur Set 1 */
-            ret=lut_info(lut_name,&info,NULL,&valid,NULL);
+            lut_info(lut_name,&info,NULL,&valid,NULL);
             if(valid==LUT1_SET_LOADED)RETURN(LUT1_FILE_USED);
             break;
 
          case 2:  /* nur Set 2 */
-            ret=lut_info(lut_name,NULL,&info,NULL,&valid);
+            lut_info(lut_name,NULL,&info,NULL,&valid);
             if(valid==LUT1_SET_LOADED)RETURN(LUT1_FILE_USED);
             break;
 
@@ -4563,9 +4729,10 @@ DLL_EXPORT int lut_cleanup(void)
        */
    init_in_progress=1;
    if(blz_f && startidx[lut2_cnt_hs-1]==lut2_cnt_hs-1)
-      blz_f=NULL; /* kein eigenes Array */
+      pz_f=blz_f=NULL; /* kein eigenes Array */
    else{
       FREE(blz_f);
+      FREE(pz_f);
    }
    FREE(zweigstelle_f);
    FREE(zweigstelle_f1);
@@ -4574,7 +4741,7 @@ DLL_EXPORT int lut_cleanup(void)
    FREE(sort_name_kurz);
    FREE(sort_ort);
    FREE(sort_blz);
-   FREE(sort_pz_methoden);
+   FREE(sort_pz_f);
    FREE(sort_plz);
    if(name_raw && name_data!=name_raw)
       FREE(name_raw);
@@ -4617,7 +4784,16 @@ DLL_EXPORT int lut_cleanup(void)
    FREE(default_buffer);
    FREE(own_iban);
    FREE(current_lutfile);
+   FREE(volltext);
+   FREE(volltext_banken);
+   FREE(volltext_data);
+   FREE(volltext_start);
+   FREE(sort_volltext);
+   FREE(sort_blz);
    for(i=0;i<400;i++)lut2_block_status[i]=0;
+   for(i=0;i<last_lut_suche_idx;i++)lut_suche_free(i);
+   FREE(lut_suche_arr);
+   last_lut_suche_idx=0;
 
    if(init_status&8){
 
@@ -4906,6 +5082,10 @@ static void init_atoi_table(void)
    lut2_feld_namen[LUT2_2_PZ_SORT]="LUT2_2_PZ_SORT";
    lut2_feld_namen[LUT2_OWN_IBAN]="LUT2_OWN_IBAN";
    lut2_feld_namen[LUT2_2_OWN_IBAN]="LUT2_2_OWN_IBAN";
+   lut2_feld_namen[LUT2_VOLLTEXT_TXT]="LUT2_VOLLTEXT_TXT";
+   lut2_feld_namen[LUT2_2_VOLLTEXT_TXT]="LUT2_2_VOLLTEXT_TXT";
+   lut2_feld_namen[LUT2_VOLLTEXT_IDX]="LUT2_VOLLTEXT_IDX";
+   lut2_feld_namen[LUT2_2_VOLLTEXT_IDX]="LUT2_2_VOLLTEXT_IDX";
 
    lut_block_idx[1]=0;
    lut_block_idx[2]=0;
@@ -4929,6 +5109,8 @@ static void init_atoi_table(void)
    lut_block_idx[20]=0;
    lut_block_idx[21]=0;
    lut_block_idx[22]=0;
+   lut_block_idx[23]=0;
+   lut_block_idx[24]=0;
 
    lut_block_name1[1]="BLZ";
    lut_block_name1[2]="FILIALEN";
@@ -4952,6 +5134,8 @@ static void init_atoi_table(void)
    lut_block_name1[20]="PLZ_SORT";
    lut_block_name1[21]="PZ_SORT";
    lut_block_name1[22]="OWN_IBAN";
+   lut_block_name1[23]="VOLLTEXT_TXT";
+   lut_block_name1[24]="VOLLTEXT_IDX";
    lut_block_name1[101]="BLZ (2)";
    lut_block_name1[102]="FILIALEN (2)";
    lut_block_name1[103]="NAME (2)";
@@ -4974,6 +5158,8 @@ static void init_atoi_table(void)
    lut_block_name1[120]="PLZ_SORT (2)";
    lut_block_name1[121]="PZ_SORT (2)";
    lut_block_name1[122]="OWN_IBAN (2)";
+   lut_block_name1[123]="VOLLTEXT_TXT (2)";
+   lut_block_name1[124]="VOLLTEXT_IDX (2)";
 
    lut_block_name2[1]="1. BLZ";
    lut_block_name2[2]="1. Anzahl Fil.";
@@ -4997,6 +5183,8 @@ static void init_atoi_table(void)
    lut_block_name2[20]="1. PLZ idx";
    lut_block_name2[21]="1. PZ idx";
    lut_block_name2[22]="1. Eigene IBAN";
+   lut_block_name2[23]="1. Volltext txt";
+   lut_block_name2[24]="1. Volltext idx";
    lut_block_name2[101]="2. BLZ";
    lut_block_name2[102]="2. Anzahl Fil.";
    lut_block_name2[103]="2. Name";
@@ -5019,6 +5207,8 @@ static void init_atoi_table(void)
    lut_block_name2[120]="2. PLZ idx";
    lut_block_name2[121]="2. PZ idx";
    lut_block_name2[122]="2. Eigene IBAN";
+   lut_block_name2[123]="2. Volltext txt";
+   lut_block_name2[124]="2. Volltext idx";
    init_status|=1;
 }
 
@@ -5712,7 +5902,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
 /*  Berechnung nach der Methode 17 +ßßß4 */
 /*
  * ######################################################################
- * #              Berechnung nach der Methode 17 (neu)                  #
+ * #              Berechnung nach der Methode 17                        #
  * ######################################################################
  * # Modulus 11, Gewichtung 1, 2, 1, 2, 1, 2                            #
  * # Die Kontonummer ist 10-stellig mit folgendem Aufbau:               #
@@ -9593,7 +9783,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
  * # subtrahiert. Das Ergebnis ist die Pr¸fziffer. Verbleibt nach       #
  * # der Division kein Rest, ist die Pr¸fziffer 0.                      #
  * #                                                                    #
- * # Ausnahme (neu ab 8.6.04):                                          #
+ * # Ausnahme:                                                          #
  * # Ist nach linksb¸ndiger Auff¸llung mit Nullen auf 10 Stellen die    #
  * # 3. Stelle der Kontonummer = 9 (Sachkonten), so erfolgt die         #
  * # Berechnung gem‰ﬂ der Ausnahme in Methode 51 mit den gleichen       #
@@ -10029,7 +10219,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
  * # subtrahiert. Das Ergebnis ist die Pr¸fziffer. Verbleibt nach       #
  * # der Division kein Rest, ist die Pr¸fziffer = 0.                    #
  * #                                                                    #
- * # Ausnahme (neu ab 6.9.04):                                          #
+ * # Ausnahme:                                                          #
  * # Ist nach linksb¸ndiger Auff¸llung mit Nullen auf 10 Stellen die    #
  * # 3. Stelle der Kontonummer = 9 (Sachkonten), so erfolgt die         #
  * # Berechnung gem‰ﬂ der Ausnahme in Methode 51 mit den gleichen       #
@@ -10369,7 +10559,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
  * ######################################################################
  * #          Berechnung nach der Methode 87 (ge‰ndert zum 6.9.04)      #
  * ######################################################################
- * # Ausnahme: (neu zum 6.9.04, der Rest ist gleich geblieben)          #
+ * # Ausnahme:                                                          #
  * # Ist nach linksb¸ndiger Auff¸llung mit Nullen auf 10 Stellen die    #
  * # 3. Stelle der Kontonummer = 9 (Sachkonten), so erfolgt die         #
  * # Berechnung gem‰ﬂ der Ausnahme in Methode 51 mit den                #
@@ -12886,11 +13076,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
 
       case 116:
 
-#if METHODE_NEU_2011_09_05>0
          if(kto[0]>'0' || (kto[1]=='2' && kto[2]=='6' && kto[3]=='9' && kto[4]>'0')){
-#else
-         if(kto[0]>'0'){
-#endif
 #if DEBUG>0
       case 1116:
          if(retvals){
@@ -13966,7 +14152,6 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
             retvals->pz_methode=126;
          }
 #endif
-            /* neue Berechnungsmethode f¸r C6, g¸ltig ab 6.6.2011 */
          switch(kto[0]){
             case '0': pz=30; break;
             case '1': pz=33; break;
@@ -14283,7 +14468,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
          INVALID_PZ10;
          CHECK_PZ10;
 
-/* Berechnungsmethoden D0 bis D8 +ßßß3
+/* Berechnungsmethoden D0 bis D9 +ßßß3
  * Berechnung nach der Methode D0 +ßßß4 */
 /*
  * ######################################################################
@@ -14405,11 +14590,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
             retvals->pz_methode=131;
          }
 #endif
-#if METHODE_NEU_2011_09_05>0
          if(*kto=='7' || *kto=='8')return INVALID_KTO;
-#else
-         if(kto=='2' || *kto=='7' || *kto=='8')return INVALID_KTO;
-#endif
          pz=31;
 
 #ifdef __ALPHA
@@ -15151,6 +15332,122 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
          if(pz)pz=10-pz;
          CHECK_PZ10;
 
+/* Berechnung nach der Methode D9 +ßßß4 */
+/*
+ * ######################################################################
+ * #               Berechnung nach der Methode D9                       #
+ * ######################################################################
+ * # Die Kontonummer ist einschlieﬂlich der Pr¸fziffer 10-stellig,      #
+ * # ggf. ist die Kontonummer f¸r die Pr¸fzifferberechnung durch        #
+ * # linksb¸ndige Auff¸llung mit Nullen 10-stellig darzustellen.        #
+ * #                                                                    #
+ * # Variante 1:                                                        #
+ * # Modulus 10, Gewichtung 2, 1, 2, 1, 2, 1, 2, 1, 2                   #
+ * #                                                                    #
+ * # Gewichtung und Berechnung erfolgen nach der Methode 00. F¸hrt      #
+ * # die Berechnung nach Variante 1 zu einem Pr¸fzifferfehler, so       #
+ * # ist nach Variante 2 zu pr¸fen.                                     #
+ * #                                                                    #
+ * # Variante 2:                                                        #
+ * # Modulus 11, Gewichtung 2, 3, 4, 5, 6, 7, 8, 9, 10                  #
+ * #                                                                    #
+ * # Gewichtung und Berechnung erfolgen nach der Methode 10.            #
+ * # F¸hrt die Berechnung nach Variante 2 zu einem Pr¸fzifferfehler,    #
+ * # so ist nach Variante 3 zu pr¸fen.                                  #
+ * #                                                                    #
+ * # Variante 3:                                                        #
+ * # Modulus 10, Gewichtung 3, 9, 7, 1, 3, 9, 7, 1, 3                   #
+ * #                                                                    #
+ * # Gewichtung und Berechnung erfolgen nach der Methode 18.            #
+ * ######################################################################
+ */
+
+      case 139:
+#if DEBUG>0
+         if(retvals){
+            retvals->methode="D9";
+            retvals->pz_methode=139;
+         }
+#endif
+#if DEBUG>0
+      case 1139:
+         if(retvals){
+            retvals->methode="D9a";
+            retvals->pz_methode=1139;
+         }
+#endif
+   /* Berechnung nach der Methode 00 */
+#ifdef __ALPHA
+         pz = ((kto[0]<'5') ? (kto[0]-'0')*2 : (kto[0]-'0')*2-9)
+            +  (kto[1]-'0')
+            + ((kto[2]<'5') ? (kto[2]-'0')*2 : (kto[2]-'0')*2-9)
+            +  (kto[3]-'0')
+            + ((kto[4]<'5') ? (kto[4]-'0')*2 : (kto[4]-'0')*2-9)
+            +  (kto[5]-'0')
+            + ((kto[6]<'5') ? (kto[6]-'0')*2 : (kto[6]-'0')*2-9)
+            +  (kto[7]-'0')
+            + ((kto[8]<'5') ? (kto[8]-'0')*2 : (kto[8]-'0')*2-9);
+#else
+         pz=(kto[1]-'0')+(kto[3]-'0')+(kto[5]-'0')+(kto[7]-'0');
+         if(kto[0]<'5')pz+=(kto[0]-'0')*2; else pz+=(kto[0]-'0')*2-9;
+         if(kto[2]<'5')pz+=(kto[2]-'0')*2; else pz+=(kto[2]-'0')*2-9;
+         if(kto[4]<'5')pz+=(kto[4]-'0')*2; else pz+=(kto[4]-'0')*2-9;
+         if(kto[6]<'5')pz+=(kto[6]-'0')*2; else pz+=(kto[6]-'0')*2-9;
+         if(kto[8]<'5')pz+=(kto[8]-'0')*2; else pz+=(kto[8]-'0')*2-9;
+#endif
+         MOD_10_80;   /* pz%=10 */
+         if(pz)pz=10-pz;
+         CHECK_PZX10;
+
+
+            /* Variante 2: Berechnung nach Methode 10 */
+#if DEBUG>0
+      case 2139:
+         if(retvals){
+            retvals->methode="D9b";
+            retvals->pz_methode=2139;
+         }
+#endif
+         pz = (kto[0]-'0') * 10
+            + (kto[1]-'0') * 9
+            + (kto[2]-'0') * 8
+            + (kto[3]-'0') * 7
+            + (kto[4]-'0') * 6
+            + (kto[5]-'0') * 5
+            + (kto[6]-'0') * 4
+            + (kto[7]-'0') * 3
+            + (kto[8]-'0') * 2;
+
+         MOD_11_352;   /* pz%=11 */
+         if(pz<=1)
+            pz=0;
+         else
+            pz=11-pz;
+         CHECK_PZX10;
+
+            /* Variante 3: Berechnung nach Methode 18 */
+#if DEBUG>0
+      case 3139:
+         if(retvals){
+            retvals->methode="D9c";
+            retvals->pz_methode=3139;
+         }
+#endif
+         pz = (kto[0]-'0') * 3
+            + (kto[1]-'0')
+            + (kto[2]-'0') * 7
+            + (kto[3]-'0') * 9
+            + (kto[4]-'0') * 3
+            + (kto[5]-'0')
+            + (kto[6]-'0') * 7
+            + (kto[7]-'0') * 9
+            + (kto[8]-'0') * 3;
+
+         MOD_10_320;   /* pz%=10 */
+         if(pz)pz=10-pz;
+         CHECK_PZ10;
+
+
 /* nicht abgedeckte F‰lle +ßßß3 */
 /*
  * ######################################################################
@@ -15814,6 +16111,14 @@ DLL_EXPORT const char *kto_check_retval2txt(int retval)
 DLL_EXPORT const char *kto_check_retval2iso(int retval)
 {
    switch(retval){
+      case INVALID_IBAN_LENGTH: return "Die L‰nge der IBAN f¸r das angegebene L‰nderk¸rzel ist falsch";
+      case LUT2_NO_ACCOUNT_GIVEN: return "Keine Bankverbindung/IBAN angegeben";
+      case LUT2_VOLLTEXT_INVALID_CHAR: return "Ung¸ltiges Zeichen ( ()+-/&.,\' ) f¸r die Volltextsuche gefunden";
+      case LUT2_VOLLTEXT_SINGLE_WORD_ONLY: return "Die Volltextsuche sucht jeweils nur ein einzelnes Wort; benutzen SIe lut_suche_multiple() zur Suche nach mehreren Worten";
+      case LUT_SUCHE_INVALID_RSC: return "die angegebene Suchresource ist ung¸ltig";
+      case LUT_SUCHE_INVALID_CMD: return "Suche: im Verkn¸pfungsstring sind nur die Zeichen a-z sowie + und - erlaubt";
+      case LUT_SUCHE_INVALID_CNT: return "Suche: es m¸ssen zwischen 1 und 26 Suchmuster angegeben werden";
+      case LUT2_VOLLTEXT_NOT_INITIALIZED: return "Das Feld Volltext wurde nicht initialisiert";
       case NO_OWN_IBAN_CALCULATION: return "das Institut erlaubt keine eigene IBAN-Berechnung";
       case KTO_CHECK_UNSUPPORTED_COMPRESSION: return "die notwendige Kompressions-Bibliothek wurden beim Kompilieren nicht eingebunden";
       case KTO_CHECK_INVALID_COMPRESSION_LIB: return "der angegebene Wert f¸r die Default-Kompression ist ung¸ltig";
@@ -15941,7 +16246,9 @@ DLL_EXPORT const char *kto_check_retval2iso(int retval)
       case KTO_CHECK_VALUE_REPLACED: return "ok; der Wert f¸r den Schl¸ssel wurde ¸berschrieben";
       case OK_UNTERKONTO_POSSIBLE: return "wahrscheinlich ok; die Kontonummer kann allerdings (nicht angegebene) Unterkonten enthalten";
       case OK_UNTERKONTO_GIVEN: return "wahrscheinlich ok; die Kontonummer enth‰lt eine Unterkontonummer";
-      case OK_SLOT_CNT_MIN_USED: return "ok; die Anzahl Slots wurde auf SLOT_CNT_MIN hochgesetzt";
+      case OK_SLOT_CNT_MIN_USED: return "ok; die Anzahl Slots wurde auf SLOT_CNT_MIN (40) hochgesetzt";
+      case SOME_KEYS_NOT_FOUND: return "ok; ein(ige) Schl¸ssel wurden nicht gefunden";
+      case LUT2_KTO_NOT_CHECKED: return "Die Bankverbindung wurde nicht getestet";
       default: return "ung¸ltiger R¸ckgabewert";
    }
 }
@@ -15958,6 +16265,14 @@ DLL_EXPORT const char *kto_check_retval2iso(int retval)
 DLL_EXPORT const char *kto_check_retval2dos(int retval)
 {
    switch(retval){
+      case INVALID_IBAN_LENGTH: return "Die LÑ nge der IBAN fÅr das angegebene LÑ nderkÅrzel ist falsch";
+      case LUT2_NO_ACCOUNT_GIVEN: return "Keine Bankverbindung/IBAN angegeben";
+      case LUT2_VOLLTEXT_INVALID_CHAR: return "UngÅltiges Zeichen ( ()+-/&.,\' ) fÅr die Volltextsuche gefunden";
+      case LUT2_VOLLTEXT_SINGLE_WORD_ONLY: return "Die Volltextsuche sucht jeweils nur ein einzelnes Wort; benutzen SIe lut_suche_multiple() zur Suche nach mehreren Worten";
+      case LUT_SUCHE_INVALID_RSC: return "die angegebene Suchresource ist ungÅltig";
+      case LUT_SUCHE_INVALID_CMD: return "Suche: im VerknÅpfungsstring sind nur die Zeichen a-z sowie + und - erlaubt";
+      case LUT_SUCHE_INVALID_CNT: return "Suche: es mÅssen zwischen 1 und 26 Suchmuster angegeben werden";
+      case LUT2_VOLLTEXT_NOT_INITIALIZED: return "Das Feld Volltext wurde nicht initialisiert";
       case NO_OWN_IBAN_CALCULATION: return "das Institut erlaubt keine eigene IBAN-Berechnung";
       case KTO_CHECK_UNSUPPORTED_COMPRESSION: return "die notwendige Kompressions-Bibliothek wurden beim Kompilieren nicht eingebunden";
       case KTO_CHECK_INVALID_COMPRESSION_LIB: return "der angegebene Wert fÅr die Default-Kompression ist ungÅltig";
@@ -16085,7 +16400,9 @@ DLL_EXPORT const char *kto_check_retval2dos(int retval)
       case KTO_CHECK_VALUE_REPLACED: return "ok; der Wert fÅr den SchlÅssel wurde Åberschrieben";
       case OK_UNTERKONTO_POSSIBLE: return "wahrscheinlich ok; die Kontonummer kann allerdings (nicht angegebene) Unterkonten enthalten";
       case OK_UNTERKONTO_GIVEN: return "wahrscheinlich ok; die Kontonummer enthÑ lt eine Unterkontonummer";
-      case OK_SLOT_CNT_MIN_USED: return "ok; die Anzahl Slots wurde auf SLOT_CNT_MIN hochgesetzt";
+      case OK_SLOT_CNT_MIN_USED: return "ok; die Anzahl Slots wurde auf SLOT_CNT_MIN (40) hochgesetzt";
+      case SOME_KEYS_NOT_FOUND: return "ok; ein(ige) SchlÅssel wurden nicht gefunden";
+      case LUT2_KTO_NOT_CHECKED: return "Die Bankverbindung wurde nicht getestet";
       default: return "ungÅltiger RÅckgabewert";
    }
 }
@@ -16102,6 +16419,14 @@ DLL_EXPORT const char *kto_check_retval2dos(int retval)
 DLL_EXPORT const char *kto_check_retval2html(int retval)
 {
    switch(retval){
+      case INVALID_IBAN_LENGTH: return "Die L&auml;nge der IBAN f&uuml;r das angegebene L&auml;nderk&uuml;rzel ist falsch";
+      case LUT2_NO_ACCOUNT_GIVEN: return "Keine Bankverbindung/IBAN angegeben";
+      case LUT2_VOLLTEXT_INVALID_CHAR: return "Ung&uuml;ltiges Zeichen ( ()+-/&.,\' ) f&uuml;r die Volltextsuche gefunden";
+      case LUT2_VOLLTEXT_SINGLE_WORD_ONLY: return "Die Volltextsuche sucht jeweils nur ein einzelnes Wort; benutzen SIe lut_suche_multiple() zur Suche nach mehreren Worten";
+      case LUT_SUCHE_INVALID_RSC: return "die angegebene Suchresource ist ung&uuml;ltig";
+      case LUT_SUCHE_INVALID_CMD: return "Suche: im Verkn&uuml;pfungsstring sind nur die Zeichen a-z sowie + und - erlaubt";
+      case LUT_SUCHE_INVALID_CNT: return "Suche: es m&uuml;ssen zwischen 1 und 26 Suchmuster angegeben werden";
+      case LUT2_VOLLTEXT_NOT_INITIALIZED: return "Das Feld Volltext wurde nicht initialisiert";
       case NO_OWN_IBAN_CALCULATION: return "das Institut erlaubt keine eigene IBAN-Berechnung";
       case KTO_CHECK_UNSUPPORTED_COMPRESSION: return "die notwendige Kompressions-Bibliothek wurden beim Kompilieren nicht eingebunden";
       case KTO_CHECK_INVALID_COMPRESSION_LIB: return "der angegebene Wert f&uuml;r die Default-Kompression ist ung&uuml;ltig";
@@ -16229,7 +16554,9 @@ DLL_EXPORT const char *kto_check_retval2html(int retval)
       case KTO_CHECK_VALUE_REPLACED: return "ok; der Wert f&uuml;r den Schl&uuml;ssel wurde &uuml;berschrieben";
       case OK_UNTERKONTO_POSSIBLE: return "wahrscheinlich ok; die Kontonummer kann allerdings (nicht angegebene) Unterkonten enthalten";
       case OK_UNTERKONTO_GIVEN: return "wahrscheinlich ok; die Kontonummer enth&auml;lt eine Unterkontonummer";
-      case OK_SLOT_CNT_MIN_USED: return "ok; die Anzahl Slots wurde auf SLOT_CNT_MIN hochgesetzt";
+      case OK_SLOT_CNT_MIN_USED: return "ok; die Anzahl Slots wurde auf SLOT_CNT_MIN (40) hochgesetzt";
+      case SOME_KEYS_NOT_FOUND: return "ok; ein(ige) Schl&uuml;ssel wurden nicht gefunden";
+      case LUT2_KTO_NOT_CHECKED: return "Die Bankverbindung wurde nicht getestet";
       default: return "ung&uuml;ltiger R&uuml;ckgabewert";
    }
 }
@@ -16246,6 +16573,14 @@ DLL_EXPORT const char *kto_check_retval2html(int retval)
 DLL_EXPORT const char *kto_check_retval2utf8(int retval)
 {
    switch(retval){
+      case INVALID_IBAN_LENGTH: return "Die L√§nge der IBAN f√ºr das angegebene L√§nderk√ºrzel ist falsch";
+      case LUT2_NO_ACCOUNT_GIVEN: return "Keine Bankverbindung/IBAN angegeben";
+      case LUT2_VOLLTEXT_INVALID_CHAR: return "Ung√ºltiges Zeichen ( ()+-/&.,\' ) f√ºr die Volltextsuche gefunden";
+      case LUT2_VOLLTEXT_SINGLE_WORD_ONLY: return "Die Volltextsuche sucht jeweils nur ein einzelnes Wort; benutzen SIe lut_suche_multiple() zur Suche nach mehreren Worten";
+      case LUT_SUCHE_INVALID_RSC: return "die angegebene Suchresource ist ung√ºltig";
+      case LUT_SUCHE_INVALID_CMD: return "Suche: im Verkn√ºpfungsstring sind nur die Zeichen a-z sowie + und - erlaubt";
+      case LUT_SUCHE_INVALID_CNT: return "Suche: es m√ºssen zwischen 1 und 26 Suchmuster angegeben werden";
+      case LUT2_VOLLTEXT_NOT_INITIALIZED: return "Das Feld Volltext wurde nicht initialisiert";
       case NO_OWN_IBAN_CALCULATION: return "das Institut erlaubt keine eigene IBAN-Berechnung";
       case KTO_CHECK_UNSUPPORTED_COMPRESSION: return "die notwendige Kompressions-Bibliothek wurden beim Kompilieren nicht eingebunden";
       case KTO_CHECK_INVALID_COMPRESSION_LIB: return "der angegebene Wert f√ºr die Default-Kompression ist ung√ºltig";
@@ -16373,7 +16708,9 @@ DLL_EXPORT const char *kto_check_retval2utf8(int retval)
       case KTO_CHECK_VALUE_REPLACED: return "ok; der Wert f√ºr den Schl√ºssel wurde √ºberschrieben";
       case OK_UNTERKONTO_POSSIBLE: return "wahrscheinlich ok; die Kontonummer kann allerdings (nicht angegebene) Unterkonten enthalten";
       case OK_UNTERKONTO_GIVEN: return "wahrscheinlich ok; die Kontonummer enth√§lt eine Unterkontonummer";
-      case OK_SLOT_CNT_MIN_USED: return "ok; die Anzahl Slots wurde auf SLOT_CNT_MIN hochgesetzt";
+      case OK_SLOT_CNT_MIN_USED: return "ok; die Anzahl Slots wurde auf SLOT_CNT_MIN (40) hochgesetzt";
+      case SOME_KEYS_NOT_FOUND: return "ok; ein(ige) Schl√ºssel wurden nicht gefunden";
+      case LUT2_KTO_NOT_CHECKED: return "Die Bankverbindung wurde nicht getestet";
       default: return "ung√ºltiger R√ºckgabewert";
    }
 }
@@ -16390,6 +16727,14 @@ DLL_EXPORT const char *kto_check_retval2utf8(int retval)
 DLL_EXPORT const char *kto_check_retval2txt_short(int retval)
 {
    switch(retval){
+      case INVALID_IBAN_LENGTH: return "INVALID_IBAN_LENGTH";
+      case LUT2_NO_ACCOUNT_GIVEN: return "LUT2_NO_ACCOUNT_GIVEN";
+      case LUT2_VOLLTEXT_INVALID_CHAR: return "LUT2_VOLLTEXT_INVALID_CHAR";
+      case LUT2_VOLLTEXT_SINGLE_WORD_ONLY: return "LUT2_VOLLTEXT_SINGLE_WORD_ONLY";
+      case LUT_SUCHE_INVALID_RSC: return "LUT_SUCHE_INVALID_RSC";
+      case LUT_SUCHE_INVALID_CMD: return "LUT_SUCHE_INVALID_CMD";
+      case LUT_SUCHE_INVALID_CNT: return "LUT_SUCHE_INVALID_CNT";
+      case LUT2_VOLLTEXT_NOT_INITIALIZED: return "LUT2_VOLLTEXT_NOT_INITIALIZED";
       case NO_OWN_IBAN_CALCULATION: return "NO_OWN_IBAN_CALCULATION";
       case KTO_CHECK_UNSUPPORTED_COMPRESSION: return "KTO_CHECK_UNSUPPORTED_COMPRESSION";
       case KTO_CHECK_INVALID_COMPRESSION_LIB: return "KTO_CHECK_INVALID_COMPRESSION_LIB";
@@ -16518,6 +16863,8 @@ DLL_EXPORT const char *kto_check_retval2txt_short(int retval)
       case OK_UNTERKONTO_POSSIBLE: return "OK_UNTERKONTO_POSSIBLE";
       case OK_UNTERKONTO_GIVEN: return "OK_UNTERKONTO_GIVEN";
       case OK_SLOT_CNT_MIN_USED: return "OK_SLOT_CNT_MIN_USED";
+      case SOME_KEYS_NOT_FOUND: return "SOME_KEYS_NOT_FOUND";
+      case LUT2_KTO_NOT_CHECKED: return "LUT2_KTO_NOT_CHECKED";
       default: return "UNDEFINED_RETVAL";
    }
 }
@@ -17114,13 +17461,37 @@ DLL_EXPORT char *iban_gen(char *blz,char *kto,int *retval)
    int j,ret,uk_cnt=-1,blz_i,flags;
    UINT4 zahl,rest;
 
+   if(!blz || !kto || !*blz || !*kto){
+      if(retval)*retval=LUT2_NO_ACCOUNT_GIVEN;
+      return NULL;
+   }
    flags=0;
-   if(*blz=='+' || *(blz+1)=='+')flags=1;
-   if(*blz=='@' || *(blz+1)=='@')flags+=2;
+   if(*blz=='+' || *(blz+1)=='+')flags=1;    /* Bankverbindung nicht testen */
+   if(*blz=='@' || *(blz+1)=='@')flags+=2;   /* "schwarze Liste" (CONFIG.INI) nicht auswerten */
    if(flags==3)
       blz+=2;
    else if(flags)
       blz++;
+
+   /* Alle BLZs der Flessa-Bank werden f¸r die IBAN-Generierung auf 79330111
+    * umgesetzt (siehe dazu http://www.flessabank.de/aktuell.php?akt=149). In
+    * konto_check.h findet sich ein Auszug von dieser Seite.
+    *
+    * In CONFIG.INI sind die BLZs der der Flessa-Bank auskommentiert (d.h.
+    * sie sind f¸r die Selbstgenerierung zugelassen); dabei steht allerdings
+    * noch die Anmerkung "Flessa Sondefall  implementiert ab 19.4.2012" (das
+    * bezieht sich wohl auch auf das Umsetzen der BLZ). Wenn die neue
+    * CONFIG.INI mit einer alten konto_check-Version ohne diese Korrektur
+    * eingesetzt wird, werden f¸r die BLZs der Flessa-Bank (auﬂer 79330111)
+    * syntaktisch richtige, aber ansonsten falsche IBANs erzeugt.
+    *
+    * Die Kontonummern der Flessa-Bank bleiben trotz der Umstellung erhalten.
+    * (siehe dazu die angegebene Webseite).
+    */
+#if FLESSA_KORREKTUR
+   if(!strcmp(blz,"70030111") || !strcmp(blz,"76330111") || !strcmp(blz,"77030111")
+         || !strcmp(blz,"78330111") || !strcmp(blz,"84030111"))blz=(char*)"79330111";
+#endif
 
    if(!(flags&2) && own_iban){
          /* testen, ob die BLZ in der "Verbotsliste" steht */
@@ -17132,35 +17503,50 @@ DLL_EXPORT char *iban_gen(char *blz,char *kto,int *retval)
    }
 
       /* erstmal das Konto testen */
-   if(!(flags&1)){  /* kein Test */
+   if(!(flags&1)){  /* Test der Bankverbindung */
       if((ret=kto_check_blz_x(blz,kto,&uk_cnt))<=0)
       {     /* Konto fehlerhaft */
          if(retval)*retval=ret;
          return NULL;
       }
-   }
-   if(uk_cnt>0){
-      for(ptr=kto+uk_cnt,dptr=xkto;(*dptr=*ptr++);dptr++);
-      *dptr++='0';
-      if(uk_cnt>1)*dptr++='0';
-      if(uk_cnt>2)*dptr++='0';
-      *dptr=0;
-      kto=xkto;
-      if(retval)*retval=OK_UNTERKONTO_ATTACHED;
-      if((ret=kto_check_blz(blz,kto))<=0){   /* Konto fehlerhaft */
-         if(retval)*retval=ret;
-         return NULL;
+
+         /* bei einigen Methoden (13, 26, 50, 63, 76 und C7) kann u.U. ein
+          * Unterkonto weggelassen worden sein. N‰heres dazu in der Funktion
+          * kto_check_blz_x().
+          *
+          * Falls dies der Fall war (uk_cnt>0) wird es hier wieder an der
+          * richtigen Stelle eingef¸gt; es wird allerdings als Fehler angesehen
+          * (mit dem Fehlercode OK_UNTERKONTO_ATTACHED). Falls ein Unterkonto
+          * mˆglich bzw. angegeben ist, ist das normalerweise ein Zeichen daf¸r
+          * daﬂ das betreffende Institut einer Selbstberechnung nicht zugestimmt
+          * hat; es wird dann nur eine Warnung ausgegeben (OK_UNTERKONTO_POSSIBLE
+          * bzw. OK_UNTERKONTO_GIVEN), aber diese Werete sind grˆﬂer als 0 und
+          * werden insofern nicht als Fehler gerechnet. Das Ergebnis kann
+          * allerdings u.U. falsch sein und sollte mit Vorsicht benutzt werden.
+          */
+      if(uk_cnt>0){
+         for(ptr=kto,dptr=xkto;(*dptr=*ptr++);dptr++);
+         *dptr++='0';
+         if(uk_cnt>1)*dptr++='0';
+         if(uk_cnt>2)*dptr++='0';
+         *dptr=0;
+         if((ret=kto_check_blz(blz,xkto))>0){   /* wahrscheinlich Unterkonto angeh‰ngt */
+            kto=xkto;
+            if(retval)*retval=OK_UNTERKONTO_ATTACHED;
+         }
+      }
+      else if(!uk_cnt){
+         if(retval)*retval=OK_UNTERKONTO_POSSIBLE;
+      }
+      else if(uk_cnt==-1){
+         if(retval)*retval=OK_UNTERKONTO_GIVEN;
+      }
+      else{ /* uk_cnt==-2 */
+         if(retval)*retval=OK;
       }
    }
-   else if(!uk_cnt){
-      if(retval)*retval=OK_UNTERKONTO_POSSIBLE;
-   }
-   else if(uk_cnt==-1){
-      if(retval)*retval=OK_UNTERKONTO_GIVEN;
-   }
-   else{ /* uk_cnt==-2 */
-      if(retval)*retval=OK;
-   }
+   else
+      if(retval)*retval=LUT2_KTO_NOT_CHECKED;
 
    sprintf(iban,"DE00%8s%10s",blz,kto);
    for(ptr=iban;*ptr;ptr++)if(*ptr==' ')*ptr='0';
@@ -17244,8 +17630,94 @@ DLL_EXPORT char *iban_gen(char *blz,char *kto,int *retval)
 DLL_EXPORT int iban_check(char *iban,int *retval)
 {
    char c,check[128],*ptr,*dptr;
-   int j,test,ret;
+   int j,test,ret,iban_len;
    UINT4 zahl,rest;
+
+   if(!iban || !*iban){
+      if(retval)*retval=LUT2_NO_ACCOUNT_GIVEN;
+      return LUT2_NO_ACCOUNT_GIVEN;
+   }
+
+      /* IBAN-L‰nge testen (abh‰ngig vom L‰ndercode) */
+   ptr=iban;
+   if(*ptr>='a' && *ptr<='z')
+      test=(*ptr-'a'+1)*100; 
+   else if(*ptr>='A' && *ptr<='Z')
+      test=(*ptr-'A'+1)*100;
+   else
+      test=0;
+
+   ptr++;
+   if(*ptr>='a' && *ptr<='z')
+      test+=(*ptr-'a'+1); 
+   else if(*ptr>='A' && *ptr<='Z')
+      test+=(*ptr-'A'+1);
+   for(iban_len=2,ptr++;*ptr;ptr++)if(isalnum(*ptr))iban_len++;
+
+   if(retval)*retval=LUT2_KTO_NOT_CHECKED;
+   switch(test){  /* L‰nge der IBAN testen, u.U. Fehler zur¸ckgeben */
+      case  104: if(iban_len!=24)return INVALID_IBAN_LENGTH; break; /* AD -> Andorra */
+      case  105: if(iban_len!=23)return INVALID_IBAN_LENGTH; break; /* AE -> Vereinigte Arabische Emirate */
+      case  112: if(iban_len!=28)return INVALID_IBAN_LENGTH; break; /* AL -> Albanien */
+      case  120: if(iban_len!=20)return INVALID_IBAN_LENGTH; break; /* AT -> ÷sterreich */
+      case  126: if(iban_len!=28)return INVALID_IBAN_LENGTH; break; /* AZ -> Aserbaidschan */
+      case  201: if(iban_len!=20)return INVALID_IBAN_LENGTH; break; /* BA -> Bosnien und Herzegowina */
+      case  205: if(iban_len!=16)return INVALID_IBAN_LENGTH; break; /* BE -> Belgien */
+      case  207: if(iban_len!=22)return INVALID_IBAN_LENGTH; break; /* BG -> Bulgarien */
+      case  208: if(iban_len!=22)return INVALID_IBAN_LENGTH; break; /* BH -> Bahrain */
+      case  308: if(iban_len!=21)return INVALID_IBAN_LENGTH; break; /* CH -> Schweiz */
+      case  318: if(iban_len!=21)return INVALID_IBAN_LENGTH; break; /* CR -> Costa Rica */
+      case  325: if(iban_len!=28)return INVALID_IBAN_LENGTH; break; /* CY -> Zypern */
+      case  326: if(iban_len!=24)return INVALID_IBAN_LENGTH; break; /* CZ -> Tschechien */
+      case  405: if(iban_len!=22)return INVALID_IBAN_LENGTH; break; /* DE -> Deutschland */
+      case  411: if(iban_len!=18)return INVALID_IBAN_LENGTH; break; /* DK -> D‰nemark */
+      case  415: if(iban_len!=28)return INVALID_IBAN_LENGTH; break; /* DO -> Dominikanische Republik */
+      case  505: if(iban_len!=20)return INVALID_IBAN_LENGTH; break; /* EE -> Estland */
+      case  519: if(iban_len!=24)return INVALID_IBAN_LENGTH; break; /* ES -> Spanien */
+      case  609: if(iban_len!=18)return INVALID_IBAN_LENGTH; break; /* FI -> Finnland */
+      case  615: if(iban_len!=18)return INVALID_IBAN_LENGTH; break; /* FO -> F‰rˆer */
+      case  618: if(iban_len!=27)return INVALID_IBAN_LENGTH; break; /* FR -> Frankreich */
+      case  702: if(iban_len!=22)return INVALID_IBAN_LENGTH; break; /* GB -> Vereinigtes Kˆnigreich */
+      case  705: if(iban_len!=22)return INVALID_IBAN_LENGTH; break; /* GE -> Georgien */
+      case  709: if(iban_len!=23)return INVALID_IBAN_LENGTH; break; /* GI -> Gibraltar */
+      case  712: if(iban_len!=18)return INVALID_IBAN_LENGTH; break; /* GL -> Grˆnland */
+      case  718: if(iban_len!=27)return INVALID_IBAN_LENGTH; break; /* GR -> Griechenland */
+      case  818: if(iban_len!=21)return INVALID_IBAN_LENGTH; break; /* HR -> Kroatien */
+      case  821: if(iban_len!=28)return INVALID_IBAN_LENGTH; break; /* HU -> Ungarn */
+      case  905: if(iban_len!=22)return INVALID_IBAN_LENGTH; break; /* IE -> Irland */
+      case  912: if(iban_len!=23)return INVALID_IBAN_LENGTH; break; /* IL -> Israel */
+      case  919: if(iban_len!=26)return INVALID_IBAN_LENGTH; break; /* IS -> Island */
+      case  920: if(iban_len!=27)return INVALID_IBAN_LENGTH; break; /* IT -> Italien */
+      case 1123: if(iban_len!=30)return INVALID_IBAN_LENGTH; break; /* KW -> Kuwait */
+      case 1126: if(iban_len!=20)return INVALID_IBAN_LENGTH; break; /* KZ -> Kasachstan */
+      case 1202: if(iban_len!=28)return INVALID_IBAN_LENGTH; break; /* LB -> Libanon */
+      case 1209: if(iban_len!=21)return INVALID_IBAN_LENGTH; break; /* LI -> Liechtenstein */
+      case 1220: if(iban_len!=20)return INVALID_IBAN_LENGTH; break; /* LT -> Litauen */
+      case 1221: if(iban_len!=20)return INVALID_IBAN_LENGTH; break; /* LU -> Luxemburg */
+      case 1222: if(iban_len!=21)return INVALID_IBAN_LENGTH; break; /* LV -> Lettland */
+      case 1303: if(iban_len!=27)return INVALID_IBAN_LENGTH; break; /* MC -> Monaco */
+      case 1304: if(iban_len!=24)return INVALID_IBAN_LENGTH; break; /* MD -> Moldawien */
+      case 1305: if(iban_len!=22)return INVALID_IBAN_LENGTH; break; /* ME -> Montenegro */
+      case 1311: if(iban_len!=19)return INVALID_IBAN_LENGTH; break; /* MK -> Mazedonien */
+      case 1318: if(iban_len!=27)return INVALID_IBAN_LENGTH; break; /* MR -> Mauretanien */
+      case 1320: if(iban_len!=31)return INVALID_IBAN_LENGTH; break; /* MT -> Malta */
+      case 1321: if(iban_len!=30)return INVALID_IBAN_LENGTH; break; /* MU -> Mauritius */
+      case 1412: if(iban_len!=18)return INVALID_IBAN_LENGTH; break; /* NL -> Niederlande */
+      case 1415: if(iban_len!=15)return INVALID_IBAN_LENGTH; break; /* NO -> Norwegen */
+      case 1612: if(iban_len!=28)return INVALID_IBAN_LENGTH; break; /* PL -> Polen */
+      case 1620: if(iban_len!=25)return INVALID_IBAN_LENGTH; break; /* PT -> Portugal */
+      case 1815: if(iban_len!=24)return INVALID_IBAN_LENGTH; break; /* RO -> Rum‰nien */
+      case 1819: if(iban_len!=22)return INVALID_IBAN_LENGTH; break; /* RS -> Serbien */
+      case 1901: if(iban_len!=24)return INVALID_IBAN_LENGTH; break; /* SA -> Saudi-Arabien */
+      case 1905: if(iban_len!=24)return INVALID_IBAN_LENGTH; break; /* SE -> Schweden */
+      case 1909: if(iban_len!=19)return INVALID_IBAN_LENGTH; break; /* SI -> Slowenien */
+      case 1911: if(iban_len!=24)return INVALID_IBAN_LENGTH; break; /* SK -> Slowakei */
+      case 1913: if(iban_len!=27)return INVALID_IBAN_LENGTH; break; /* SM -> San Marino */
+      case 2014: if(iban_len!=24)return INVALID_IBAN_LENGTH; break; /* TN -> Tunesien */
+      case 2018: if(iban_len!=26)return INVALID_IBAN_LENGTH; break; /* TR -> T¸rkei */
+      case 2207: if(iban_len!=24)return INVALID_IBAN_LENGTH; break; /* VG -> Jungferninseln */
+      default: break;
+   }
 
       /* BBAN (Basic Bank Account Number) kopieren (alphanumerisch) */
    test=0;
@@ -17471,6 +17943,330 @@ DLL_EXPORT int ipi_check(char *zweck)
  * ###########################################################################
  */
 
+/* Funktion volltext_zeichen() +ßßß2 */
+/* Diese Funktion gibt f¸r Zeichen die bei der Volltextsuche g¸ltig sind
+ * (Buchstaben, Zahlen und Umlaute) 1 zur¸ck, f¸r alle anderen Zeichen 0. Der
+ * Parameter wird als char **c ¸bergeben, damit er bei UTF-8-Zeichen oder
+ * HTML-Entities auf den Buchstaben vor dem Ende des Zeichens inkrementiert
+ * werden kann und so eine saubere Erkennung der Zeichen mˆglich ist.
+ */
+static int volltext_zeichen(unsigned char **c)
+{
+   unsigned char *p;
+
+   switch(**c){
+
+         /* Kleinbuchstaben */
+      case 'a': return 1;
+      case 'b': return 1;
+      case 'c': return 1;
+      case 'd': return 1;
+      case 'e': return 1;
+      case 'f': return 1;
+      case 'g': return 1;
+      case 'h': return 1;
+      case 'i': return 1;
+      case 'j': return 1;
+      case 'k': return 1;
+      case 'l': return 1;
+      case 'm': return 1;
+      case 'n': return 1;
+      case 'o': return 1;
+      case 'p': return 1;
+      case 'q': return 1;
+      case 'r': return 1;
+      case 's': return 1;
+      case 't': return 1;
+      case 'u': return 1;
+      case 'v': return 1;
+      case 'w': return 1;
+      case 'x': return 1;
+      case 'y': return 1;
+      case 'z': return 1;
+
+         /* Groﬂbuchstaben: */
+      case 'A': return 1;
+      case 'B': return 1;
+      case 'C': return 1;
+      case 'D': return 1;
+      case 'E': return 1;
+      case 'F': return 1;
+      case 'G': return 1;
+      case 'H': return 1;
+      case 'I': return 1;
+      case 'J': return 1;
+      case 'K': return 1;
+      case 'L': return 1;
+      case 'M': return 1;
+      case 'N': return 1;
+      case 'O': return 1;
+      case 'P': return 1;
+      case 'Q': return 1;
+      case 'R': return 1;
+      case 'S': return 1;
+      case 'T': return 1;
+      case 'U': return 1;
+      case 'V': return 1;
+      case 'W': return 1;
+      case 'X': return 1;
+      case 'Y': return 1;
+      case 'Z': return 1;
+
+         /* Zahlen */
+      case '0': return 1;
+      case '1': return 1;
+      case '2': return 1;
+      case '3': return 1;
+      case '4': return 1;
+      case '5': return 1;
+      case '6': return 1;
+      case '7': return 1;
+      case '8': return 1;
+      case '9': return 1;
+
+         /* HTML-Entities */
+      case '&': 
+           /* testen auf einige HTML Entities. Die folgenden Entities werden behandelt:
+            *    &.uml;
+            *    &.acute;
+            *    &.grave;
+            *    &.tilde;
+            *    &.circ;
+            *    &szlig;
+            *    &quot;
+            *    &amp;
+            *    &lt;
+            *    &gt;
+            *    &#xxx; der Umlaute und Akzentbuchstaben (numerisch)
+            *
+            * Bei den Umlauten und Akzenten wird der erste Buchstabe hier nicht getestet,
+            * sondern erst sp‰ter in der eigentlichen Suche. Es w¸rde den Code verkomplizieren,
+            * ohne eigentlichen Nutzen zu bringen (der Test wird sp‰ter doch durchgef¸hrt).
+            */
+           p=*c+2; if(*p++=='u' && *p++=='m' && *p++=='l' && *p++==';')                          {*c+=5; return 1;}
+           p=*c+2; if(*p++=='a' && *p++=='c' && *p++=='u' && *p++=='t' && *p++=='e' && *p++==';'){*c+=7; return 1;}
+           p=*c+2; if(*p++=='g' && *p++=='r' && *p++=='a' && *p++=='v' && *p++=='e' && *p++==';'){*c+=7; return 1;}
+           p=*c+2; if(*p++=='t' && *p++=='i' && *p++=='l' && *p++=='d' && *p++=='e' && *p++==';'){*c+=7; return 1;}
+           p=*c+2; if(*p++=='c' && *p++=='i' && *p++=='r' && *p++=='c' && *p++==';')             {*c+=6; return 1;}
+           p=*c+1; if(*p++=='s' && *p++=='z' && *p++=='l' && *p++=='i' && *p++=='g' && *p++==';'){*c+=7; return 1;}
+           p=*c+1; if(*p++=='q' && *p++=='u' && *p++=='o' && *p++=='t' && *p++==';')             {*c+=5; return 1;}
+           p=*c+1; if(*p++=='a' && *p++=='m' && *p++=='p' && *p++==';')                          {*c+=4; return 1;}
+           p=*c+1; if(*p++=='l' && *p++=='t' && *p++==';')                                       {*c+=3; return 1;}
+           p=*c+1; if(*p++=='g' && *p++=='t' && *p++==';')                                       {*c+=3; return 1;}
+
+               /* numerische Escape-Sequenzen (hier einfach sortiert, ohne Buchstabenwerte) */
+           p=*c+1;
+           if(*p=='#' && *(p+4)==';')switch(atoi((char*)p+1)){
+              case 192:
+              case 193:
+              case 194:
+              case 195:
+              case 196:
+              case 200:
+              case 201:
+              case 202:
+              case 203:
+              case 204:
+              case 205:
+              case 206:
+              case 207:
+              case 209:
+              case 210:
+              case 211:
+              case 212:
+              case 213:
+              case 214:
+              case 217:
+              case 218:
+              case 219:
+              case 220:
+              case 221:
+              case 223:
+              case 224:
+              case 225:
+              case 226:
+              case 227:
+              case 228:
+              case 232:
+              case 233:
+              case 234:
+              case 235:
+              case 236:
+              case 237:
+              case 238:
+              case 239:
+              case 241:
+              case 242:
+              case 243:
+              case 244:
+              case 245:
+              case 246:
+              case 249:
+              case 250:
+              case 251:
+              case 252:
+              case 253:
+              case 255:
+                 *c+=5;
+                 return 1;
+              default:
+                 return 0;
+           }
+           return 0;    /* alles was mit & beginnt und noch nicht gefunden wurde verwerfen */
+
+         /* ISO 8859-1 Umlaute etc. */
+      case 0xc1: return 1;    /* ISO-8859-1: A acute */
+      case 0xc2: return 1;    /* ISO-8859-1: A circ  */
+      case 0xc0: return 1;    /* ISO-8859-1: A grave */
+      case 0xc4: return 1;    /* ISO-8859-1: A uml   */
+      case 0xe8: return 1;    /* ISO-8859-1: e grave */
+      case 0xc9: return 1;    /* ISO-8859-1: E acute */
+      case 0xca: return 1;    /* ISO-8859-1: E circ  */
+      case 0xc8: return 1;    /* ISO-8859-1: E grave */
+      case 0xcb: return 1;    /* ISO-8859-1: E uml   */
+      case 0xee: return 1;    /* ISO-8859-1: i circ  */
+      case 0xef: return 1;    /* ISO-8859-1: i uml   */
+      case 0xcd: return 1;    /* ISO-8859-1: I acute */
+      case 0xce: return 1;    /* ISO-8859-1: I circ  */
+      case 0xcc: return 1;    /* ISO-8859-1: I grave */
+      case 0xcf: return 1;    /* ISO-8859-1: I uml   */
+      case 0xf1: return 1;    /* ISO-8859-1: n tilde */
+      case 0xd1: return 1;    /* ISO-8859-1: N tilde */
+      case 0xf3: return 1;    /* ISO-8859-1: o acute */
+      case 0xf4: return 1;    /* ISO-8859-1: o circ  */
+      case 0xf2: return 1;    /* ISO-8859-1: o grave */
+      case 0xf5: return 1;    /* ISO-8859-1: o tilde */
+      case 0xf6: return 1;    /* ISO-8859-1: o uml   */
+      case 0xd5: return 1;    /* ISO-8859-1: O tilde */
+      case 0xfa: return 1;    /* ISO-8859-1: u acute */
+      case 0xfb: return 1;    /* ISO-8859-1: u circ  */
+      case 0xf9: return 1;    /* ISO-8859-1: u grave */
+      case 0xfc: return 1;    /* ISO-8859-1: u uml   */
+      case 0xda: return 1;    /* ISO-8859-1: U acute */
+      case 0xdb: return 1;    /* ISO-8859-1: U circ  */
+      case 0xd9: return 1;    /* ISO-8859-1: U grave */
+      case 0xdc: return 1;    /* ISO-8859-1: U uml   */
+      case 0xfd: return 1;    /* ISO-8859-1: Y acute */
+      case 0xdd: return 1;    /* ISO-8859-1: Y acute */
+      case 0xff: return 1;    /* ISO-8859-1: y uml   */
+      case 0xdf: return 1;    /* ISO-8859-1: s szlig */
+      case 0xd2: return 1;    /* ISO-8859-1: O grave */
+      case 0xd4: return 1;    /* ISO-8859-1: O circ  */
+      case 0xd3: return 1;    /* ISO-8859-1: O acute */
+      case 0xd6: return 1;    /* ISO-8859-1: O uml   */
+      case 0xe4: return 1;    /* ISO-8859-1: a uml   */
+      case 0xe0: return 1;    /* ISO-8859-1: a grave */
+      case 0xe2: return 1;    /* ISO-8859-1: a circ  */
+      case 0xe3: return 1;    /* ISO-8859-1: a tilde */
+      case 0xe9: return 1;    /* ISO-8859-1: e acute */
+      case 0xea: return 1;    /* ISO-8859-1: e circ  */
+      case 0xeb: return 1;    /* ISO-8859-1: e uml   */
+      case 0xec: return 1;    /* ISO-8859-1: i grave */
+      case 0xed: return 1;    /* ISO-8859-1: i acute */
+      case 0xe1: return 1;    /* ISO-8859-1: a acute */
+
+      case 0xc3:  /* UTF-8 Zeichen */
+         switch(*(*c+1)){
+               /* UTF8-Kodierung (immer mit Pr‰fix 0xc3): */
+            case 0xa1:     /* UTF-8:  a acute  */
+            case 0xa2:     /* UTF-8:  a circ   */
+            case 0xa0:     /* UTF-8:  a grave  */
+            case 0xa3:     /* UTF-8:  a tilde  */
+            case 0xa4:     /* UTF-8:  a uml    */
+            case 0X81:     /* UTF-8:  A acute  */
+            case 0X82:     /* UTF-8:  A circ   */
+            case 0X80:     /* UTF-8:  A grave  */
+            case 0X83:     /* UTF-8:  A tilde  */
+            case 0X84:     /* UTF-8:  A uml    */
+            case 0xa9:     /* UTF-8:  e acute  */
+            case 0xaa:     /* UTF-8:  e circ   */
+            case 0xa8:     /* UTF-8:  e grave  */
+            case 0xab:     /* UTF-8:  e uml    */
+            case 0x89:     /* UTF-8:  E acute  */
+            case 0x8a:     /* UTF-8:  E circ   */
+            case 0x88:     /* UTF-8:  E grave  */
+            case 0x8b:     /* UTF-8:  E uml    */
+            case 0xad:     /* UTF-8:  i acute  */
+            case 0xae:     /* UTF-8:  i circ   */
+            case 0xac:     /* UTF-8:  i grave  */
+            case 0xaf:     /* UTF-8:  i uml    */
+            case 0x8d:     /* UTF-8:  I acute  */
+            case 0x8e:     /* UTF-8:  I circ   */
+            case 0x8c:     /* UTF-8:  I grave  */
+            case 0x8f:     /* UTF-8:  I uml    */
+            case 0xb1:     /* UTF-8:  n tilde  */
+            case 0x91:     /* UTF-8:  N tilde  */
+            case 0xb3:     /* UTF-8:  o acute  */
+            case 0xb4:     /* UTF-8:  o circ   */
+            case 0xb2:     /* UTF-8:  o grave  */
+            case 0xb5:     /* UTF-8:  o tilde  */
+            case 0xb6:     /* UTF-8:  o uml    */
+            case 0x93:     /* UTF-8:  O acute  */
+            case 0x94:     /* UTF-8:  O circ   */
+            case 0x92:     /* UTF-8:  O grave  */
+            case 0x95:     /* UTF-8:  O tilde  */
+            case 0x96:     /* UTF-8:  O uml    */
+            case 0xba:     /* UTF-8:  u acute  */
+            case 0xbb:     /* UTF-8:  u circ   */
+            case 0xb9:     /* UTF-8:  u grave  */
+            case 0xbc:     /* UTF-8:  u uml    */
+            case 0x9a:     /* UTF-8:  U acute  */
+            case 0x9b:     /* UTF-8:  U circ   */
+            case 0x99:     /* UTF-8:  U grave  */
+            case 0x9c:     /* UTF-8:  U uml    */
+            case 0xbd:     /* UTF-8:  y acute  */
+            case 0x9d:     /* UTF-8:  Y acute  */
+            case 0xbf:     /* UTF-8:  y uml    */
+            case 0x9f:     /* UTF-8:  szlig    */
+               (*c)++;     /* Der Pointer muﬂ inkrementiert werden (2-Byte-Zeichen) */
+               return 1;
+            default:
+               return 0;
+         }
+
+            /* CP-850, ohne Kollisionen mit ISO 8859-1 */
+      case 0xa0: return 1;    /* CP-850: a acute */
+      case 0x83: return 1;    /* CP-850: a circ  */
+      case 0x85: return 1;    /* CP-850: a grave */
+      case 0xc6: return 1;    /* CP-850: a tilde */
+      case 0x84: return 1;    /* CP-850: a uml   */
+      case 0xb5: return 1;    /* CP-850: A acute */
+      case 0xb6: return 1;    /* CP-850: A circ  */
+      case 0xb7: return 1;    /* CP-850: A grave */
+      case 0xc7: return 1;    /* CP-850: A tilde */
+      case 0x8e: return 1;    /* CP-850: A uml   */
+      case 0x82: return 1;    /* CP-850: e acute */
+      case 0x88: return 1;    /* CP-850: e circ  */
+      case 0x8a: return 1;    /* CP-850: e grave */
+      case 0x89: return 1;    /* CP-850: e uml   */
+      case 0x90: return 1;    /* CP-850: E acute */
+      case 0xa1: return 1;    /* CP-850: i acute */
+      case 0x8c: return 1;    /* CP-850: i circ  */
+      case 0x8d: return 1;    /* CP-850: i grave */
+      case 0x8b: return 1;    /* CP-850: i uml   */
+      case 0xd7: return 1;    /* CP-850: I circ  */
+      case 0xde: return 1;    /* CP-850: I grave */
+      case 0xd8: return 1;    /* CP-850: I uml   */
+      case 0xa4: return 1;    /* CP-850: n tilde */
+      case 0xa5: return 1;    /* CP-850: N tilde */
+      case 0xa2: return 1;    /* CP-850: o acute */
+      case 0x93: return 1;    /* CP-850: o circ  */
+      case 0x95: return 1;    /* CP-850: o grave */
+      case 0x94: return 1;    /* CP-850: o uml   */
+      case 0xe5: return 1;    /* CP-850: O tilde */
+      case 0x99: return 1;    /* CP-850: O uml   */
+      case 0xa3: return 1;    /* CP-850: u acute */
+      case 0x96: return 1;    /* CP-850: u circ  */
+      case 0x97: return 1;    /* CP-850: u grave */
+      case 0x81: return 1;    /* CP-850: u uml   */
+      case 0x9a: return 1;    /* CP-850: U uml   */
+      case 0x98: return 1;    /* CP-850: y uml   */
+
+      default: /* alle sonstigen Zeichen verwerfen */
+         return 0;
+   }
+}
+
 /* Funktion get_sortc() +ßßß2 */
    /* Diese Funktion holt einen "Buchstaben" aus einem String und gibt eine auf
     * 12 Bit erweiterte Form zur¸ck, bei denen Groﬂ- und Kleinbuchstaben als
@@ -17478,7 +18274,8 @@ DLL_EXPORT int ipi_check(char *zweck)
     * Grundbuchstaben eingereiht werden (allerdings von diesen unterschieden
     * werden, anders als bis Version 3.6 von konto_check). F¸r UTF-8 sowie
     * HTML-kodierte Zeichenfolgen werden die entsprechenden Sequenzen ebenfalls
-    * erkannt und der Eingangspointer dann entsprechend modifiziert zur¸ckgegeben.
+    * erkannt und der Eingangspointer dann entsprechend inkrementiert zur¸ckgegeben
+    * (er steht auf dem Beginn des n‰chsten "Buchstabens")
     */
 static int get_sortc(char **a,int enc)
 {
@@ -17855,7 +18652,7 @@ static int get_sortc(char **a,int enc)
    /* diese Funktion ‰hnelt wie strcasecmp(): strcmp ohne Groﬂ/Kleinschreibung,
     * dazu werden noch die Umlaute ber¸cksichtigt (diese werden bei den
     * entsprechenden Grundbuchstaben einsortiert). Die Umlaute werden in der
-    * Funktion get_sortc() behandelt. Seit der Version 3.7 werden alle
+    * Funktion get_sortc() behandelt. Seit der Version 4.0 werden alle
     * Kodierungen (inklusive UTF-8 und HTML Entities) ber¸cksichtigt; vorher
     * war die Behandlung der Umlaute auf ISO-8859-1 beschr‰nkt).
     */
@@ -17921,6 +18718,7 @@ static int binary_search(char *a,char **base,int *sort_a,int cnt,int *unten,int 
    int x,y,l,r;
    int (*fkt)(char*,char*);
 
+   while(isspace(*a))a++;
    if(*a=='!'){   /* bei Suchaufrufen mit ! als erstem Zeichen -> genaue Suche starten */
       a++;
       fkt=stri_cmp;
@@ -18042,14 +18840,14 @@ static int qcmp_blz(const void *ap,const void *bp)
       return a-b;
 }
 
-/* Funktion qcmp_pz_methoden() +ßßß3 */
-static int qcmp_pz_methoden(const void *ap,const void *bp)
+/* Funktion qcmp_pz_f() +ßßß3 */
+static int qcmp_pz_f(const void *ap,const void *bp)
 {
    int a,b,r;
 
    a=*((int *)ap);
    b=*((int *)bp);
-   if((r=pz_methoden[a]-pz_methoden[b]))
+   if((r=pz_f[a]-pz_f[b]))
       return r;
    else 
       return a-b;
@@ -18077,27 +18875,33 @@ static int init_blzf(int *cnt_p)
    int cnt,i,j,n,k;
 
    if(cnt_p)*cnt_p=0;
+   if((init_status&7)<7)return LUT2_NOT_INITIALIZED;
+   if(lut_id_status==FALSE)return LUT1_FILE_USED;
    if(startidx[lut2_cnt_hs-1]==lut2_cnt_hs-1){  /* keine Filialen in der Datei enthalten */
       cnt=lut2_cnt_hs;
       blz_f=blz;     /* die einfache BLZ-Tabelle reicht aus */
+      pz_f=pz_methoden;
          /* Zweigstellen-Array, komplett mit Nullen initialisiert (per calloc; keine Zweigstellen) */
       if(!zweigstelle_f && !(zweigstelle_f=calloc(cnt+10,sizeof(int))))return ERROR_MALLOC;
    }
    else
       cnt=lut2_cnt;
    if(!blz_f){   /* Bankleitzahlen mit Filialen; eigenes Array erforderlich */
-      if(!(blz_f=calloc(cnt+10,sizeof(int)))){
-         FREE(zweigstelle_f);
-         return ERROR_MALLOC;
-      }
+      if(!(blz_f=calloc(cnt+10,sizeof(int))))return ERROR_MALLOC;
       if(!(zweigstelle_f=calloc(cnt+10,sizeof(int)))){
          FREE(blz_f);
+         return ERROR_MALLOC;
+      }
+      if(!(pz_f=calloc(cnt+10,sizeof(int)))){
+         FREE(blz_f);
+         FREE(zweigstelle_f);
          return ERROR_MALLOC;
       }
       for(i=j=0;i<lut2_cnt_hs;i++)if((n=filialen[i])>1){
          for(k=0;k<n;k++){
             zweigstelle_f[j]=k;
-            blz_f[j++]=blz[i];
+            blz_f[j]=blz[i];
+            pz_f[j++]=pz_methoden[i];
          }
       }
       else{
@@ -18109,21 +18913,26 @@ static int init_blzf(int *cnt_p)
    return OK;
 }
 
+DLL_EXPORT int kto_check_idx2blz(int idx,int *zweigstelle,int *retval)
+{
+   return konto_check_idx2blz(idx,zweigstelle,retval);
+}
+
 DLL_EXPORT int konto_check_idx2blz(int idx,int *zweigstelle,int *retval)
 {
    int ret;
    if(!blz_f && (ret=init_blzf(NULL))<0){
-      *retval=ret;
-      *zweigstelle=0;
+      if(retval)*retval=ret;
+      if(zweigstelle)*zweigstelle=0;
       return 0;
    }
-   *retval=OK;
-   *zweigstelle=zweigstelle_f[idx];
+   if(retval)*retval=OK;
+   if(zweigstelle)*zweigstelle=zweigstelle_f[idx];
    return blz_f[idx];
 }
 
 /* Funktion suche_int1() +ßßß2 */
-static int suche_int1(int a1,int a2,int *anzahl,int **start_idx,int **zweigstelle_base,int **blz_base,
+static int suche_int1(int a1,int a2,int *anzahl,int **start_idx,int **zweigstellen_base,int **blz_base,
       int **base_name,int **base_sort,int(*cmp)(const void *, const void *),int cnt,int such_idx)
 {
    char *data,*ptr;
@@ -18173,16 +18982,17 @@ static int suche_int1(int a1,int a2,int *anzahl,int **start_idx,int **zweigstell
 }
 
 /* Funktion suche_int2() +ßßß2 */
-static int suche_int2(int a1,int a2,int *anzahl,int **start_idx,int **zweigstelle_base,int **blz_base,
-      int **base_name,int **base_sort,int(*cmp)(const void *, const void *),int such_idx)
+static int suche_int2(int a1,int a2,int *anzahl,int **start_idx,int **zweigstellen_base,int **blz_base,
+      int **base_name,int **base_sort,int(*cmp)(const void *, const void *),int such_idx,int pz_suche)
 {
    char *data,*ptr;
    const char *lut_name;
-   int i,cnt,unten,retval,*b_sort,lut_set;
+   int i,j,k,ix,cnt,cnt1,unten,retval,*b_sort,lut_set;
    UINT4 len;
 
    if(!a2)a2=a1;
    if((retval=init_blzf(&cnt))<0)return retval;
+   cnt1=cnt;   /* nur gegen gcc-Warnung */
    b_sort=*base_sort;
    if(!b_sort){
       lut_name=current_lutfile_name(&lut_set,NULL,&retval);
@@ -18196,7 +19006,10 @@ static int suche_int2(int a1,int a2,int *anzahl,int **start_idx,int **zweigstell
       retval=read_lut_block((char*)lut_name,such_idx,&len,&data);
       if(retval==OK){
          ptr=data;
-         C2UI(cnt,ptr);
+         if(pz_suche)
+            C2UI(cnt1,ptr);
+         else
+            C2UI(cnt,ptr);
          if(!(b_sort=malloc(cnt*sizeof(int)))){
             if(blz_f!=blz)
                FREE(blz_f);
@@ -18205,7 +19018,18 @@ static int suche_int2(int a1,int a2,int *anzahl,int **start_idx,int **zweigstell
             FREE(zweigstelle_f);
             return ERROR_MALLOC;
          }
-         for(i=0;i<cnt;i++)C2UI(b_sort[i],ptr);
+         if(pz_suche){
+            if(base_name)*base_name=pz_f;
+            for(i=ix=0;i<cnt1;i++){
+               C2UI(j,ptr);
+               for(k=0;k<filialen[j];k++){
+                  b_sort[ix++]=startidx[j]+k; /* alle Filialen eintragen */
+                  pz_f[startidx[j]+k]=pz_methoden[j]; /* Pr¸fziffermethode f¸r die Filialen */
+               }
+            }
+         }
+         else
+            for(i=0;i<cnt;i++)C2UI(b_sort[i],ptr);
          free(data);
       }
       else{
@@ -18218,6 +19042,11 @@ static int suche_int2(int a1,int a2,int *anzahl,int **start_idx,int **zweigstell
             FREE(zweigstelle_f);
             return ERROR_MALLOC;
          }
+         if(pz_suche){     /* Pr¸fziffermethode f¸r die Filialen eintragen */
+            if(base_name)*base_name=pz_f;
+            for(i=0;i<cnt1;i++)
+               for(k=0;k<filialen[i];k++)pz_f[startidx[i]+k]=pz_methoden[i];
+         }
          for(i=0;i<cnt;i++)b_sort[i]=i;
          qsort(b_sort,cnt,sizeof(int),cmp);
       }
@@ -18229,14 +19058,14 @@ static int suche_int2(int a1,int a2,int *anzahl,int **start_idx,int **zweigstell
       RETURN(retval);
    }
    if(blz_base)*blz_base=blz_f;
-   if(zweigstelle_base)*zweigstelle_base=zweigstelle_f;
+   if(zweigstellen_base)*zweigstellen_base=zweigstelle_f;
    if(anzahl)*anzahl=cnt;
    if(start_idx)*start_idx=b_sort+unten;
    return OK;
 }
 
 /* Funktion suche_str() +ßßß2 */
-static int suche_str(char *such_name,int *anzahl,int **start_idx,int **zweigstelle_base,int **blz_base,
+static int suche_str(char *such_name,int *anzahl,int **start_idx,int **zweigstellen_base,int **blz_base,
       char ***base_name,int **base_sort,int(*cmp)(const void *, const void *),UINT4 such_idx)
 {
    char *data,*ptr;
@@ -18246,7 +19075,7 @@ static int suche_str(char *such_name,int *anzahl,int **start_idx,int **zweigstel
 
    if((retval=init_blzf(&cnt))<0)return retval;
    if(blz_base)*blz_base=blz_f;
-   if(zweigstelle_base)*zweigstelle_base=zweigstelle_f;
+   if(zweigstellen_base)*zweigstellen_base=zweigstelle_f;
    b_sort=*base_sort;
    if(!b_sort){
          /* Dateinamen und Set der aktuellen Initialisierung holen */
@@ -18282,7 +19111,6 @@ static int suche_str(char *such_name,int *anzahl,int **start_idx,int **zweigstel
       }
       *base_sort=b_sort;   /* Variable an aufrufende Funktion zur¸ckgeben */
    }
-   while(isspace(*such_name))such_name++;
    if((retval=binary_search(such_name,*base_name,b_sort,cnt,&unten,&cnt))!=OK){
       if(anzahl)*anzahl=0;
       if(start_idx)*start_idx=NULL;
@@ -18293,8 +19121,637 @@ static int suche_str(char *such_name,int *anzahl,int **start_idx,int **zweigstel
    return OK;
 }
 
+/* Funktion lut_suche_multiple_and() +ßßß2 */
+/* Diese Funktion  bekommt als Eingangsparameter das Ergebnis einer oder zweier
+ * Suchfunktionen (in der Form zweier Integer-Pointer *start1 und *start2 sowie
+ * der zugehˆrigen Anzahlen cnt1 und cnt2, wie sie von den normalen
+ * Suchroutinen zur¸ckgegeben werden) sowie (optional) den Ausgabe-Parameter
+ * *such_array, der ein Integerarray mit lut2_cnt Elementen ist, bei dem jedes
+ * Element f¸r eine Bank steht. Falls such_array nicht angegeben ist, wird es
+ * initialisiert. Das weitere Verhalten h‰ngt von den Parametern start1 und
+ * start2 ab:
+ *
+ *    - falls nur start1 angegeben ist, werden in such_array alle Banken auf 1
+ *      gesetzt, die in dem Array start1 angegeben sind.
+ *    - falls start1 und start2 angegeben sind, werden nur die Banken auf 1
+ *      gesetzt, die in beiden Arrays angegeben sind.
+ *
+ * Die Variante daﬂ nur start1 angegeben ist wird benutzt, um die interne
+ * Darstellung auf die in dieser Funktionsgruppe benutzte Version umzusetzen.
+ * Das Ausgabearray (such_array) ist dabei nach Banken sortiert.
+ */
+static int *lut_suche_multiple_and(int *such_array,int *start1,int cnt1,int *start2,int cnt2,int *cnt,int *retval)
+{
+   int i,min_val;
+
+   if(cnt)*cnt=lut2_cnt;
+   if(!such_array){
+      if(!(such_array=calloc(sizeof(int),lut2_cnt))){
+         if(retval)*retval=ERROR_MALLOC;
+         return NULL;
+      }
+      min_val=2;
+   }
+   else
+      min_val=3;
+   if(start2)min_val+=4;
+   for(i=0;i<lut2_cnt;i++)if(such_array[i])such_array[i]=1;
+   if(start1)for(i=0;i<cnt1;i++)such_array[start1[i]]|=2;
+   if(start2)for(i=0;i<cnt2;i++)such_array[start2[i]]|=4;
+   for(i=0;i<lut2_cnt;i++)if(such_array[i]<min_val)
+      such_array[i]=0;
+   else
+      such_array[i]=1;
+   if(retval)*retval=OK;
+   return such_array;
+}
+
+/* Funktion lut_suche_multiple_or() +ßßß2 */
+static int *lut_suche_multiple_or(int *such_array1,int **such_array2,int *cnt)
+{
+   int i;
+
+   if(cnt)*cnt=lut2_cnt;
+   if(!*such_array2)return such_array1;
+   if(!such_array1){
+      such_array1=*such_array2;
+      *such_array2=NULL;
+      return such_array1;
+   }
+   for(i=0;i<lut2_cnt;i++)if(such_array1[i] || (*such_array2)[i])such_array1[i]=1;
+   FREE(*such_array2);
+   return such_array1;
+}
+
+/* Funktion lut_suche_multiple_not() +ßßß2 */
+static int *lut_suche_multiple_not(int *such_array1,int **such_array2,int *cnt)
+{
+   int i;
+
+   if(cnt)*cnt=lut2_cnt;
+   if(!*such_array2)return such_array1;
+   if(!such_array1){
+      such_array1=*such_array2;
+      *such_array2=NULL;
+      for(i=0;i<lut2_cnt;i++)if(such_array1[i])
+         such_array1[i]=0;
+      else
+         such_array1[i]=1;
+      return such_array1;
+   }
+   else  /* nur bisher belegte Banken werden ber¸cksichtigt */
+      for(i=0;i<lut2_cnt;i++)if(such_array1[i])such_array1[i]=1;
+   for(i=0;i<lut2_cnt;i++)if((*such_array2)[i])such_array1[i]=0;
+   FREE(*such_array2);
+   return such_array1;
+}
+
+DLL_EXPORT int lut_suche_init(int uniq)
+{
+   int i,id;
+   LUT_SUCHE_ARR *a;
+
+   if(!(a=calloc(sizeof(LUT_SUCHE_ARR),1)))return ERROR_MALLOC;
+   if(!lut_suche_arr && !(lut_suche_arr=calloc(sizeof(LUT_SUCHE_ARR*),last_lut_suche_idx=100)))return ERROR_MALLOC;
+   for(i=id=0;i<last_lut_suche_idx;i++)if(!lut_suche_arr[i]){  /* freien Index suchen */
+      id=i;
+      break;
+   }
+   if(i==last_lut_suche_idx){ /* der buffer wird zu klein, mehr allokieren */
+      if(!(lut_suche_arr=realloc(lut_suche_arr,sizeof(LUT_SUCHE_ARR*)*(last_lut_suche_idx+=100))))return ERROR_MALLOC;
+      for(id=i++;i<last_lut_suche_idx;i++)lut_suche_arr[i]=NULL;
+   }
+   lut_suche_arr[id]=a;
+   a->uniq=uniq;
+   return id;
+}
+
+DLL_EXPORT int lut_suche_free(int id)
+{
+   int i;
+   LUT_SUCHE_ARR *a;
+
+   if(id<0 || id>=last_lut_suche_idx || !lut_suche_arr[id])return LUT_SUCHE_INVALID_RSC;
+   a=lut_suche_arr[id];
+   for(i=0;i<LUT_SUCHE_MAX_CNT;i++)FREE(a->suche[i].suche_str); /* Suchstrings waren mit strdup kopiert */
+   free(a);                   /* Struktur selbst freigeben */
+   lut_suche_arr[id]=NULL;    /* Slot als frei markieren */
+   return OK;
+}
+
+DLL_EXPORT int lut_suche_set(int such_id,int idx,int typ,int i1,int i2,char *txt)
+{
+   int ret;
+   LUT_SUCHE_ARR *a;
+
+   if(such_id<0 || such_id>=last_lut_suche_idx || !lut_suche_arr[such_id])return LUT_SUCHE_INVALID_RSC;
+   a=lut_suche_arr[such_id];
+   ret=OK;
+
+   if(isupper(idx)){    /* testweise die Suche durchf¸hren, bei Fehler R¸ckgabe des Statuscodes */
+      idx=idx-'A';
+      switch(typ){
+         case LUT_SUCHE_VOLLTEXT:
+            if((ret=lut_suche_volltext(txt,NULL,NULL,NULL,NULL,NULL,NULL,NULL))<0 && ret!=KEY_NOT_FOUND)return ret;
+            break;
+         case LUT_SUCHE_BIC:
+            if((ret=lut_suche_bic(txt,NULL,NULL,NULL,NULL,NULL))<0 && ret!=KEY_NOT_FOUND)return ret;
+            break;
+         case LUT_SUCHE_NAMEN:
+            if((ret=lut_suche_namen(txt,NULL,NULL,NULL,NULL,NULL))<0 && ret!=KEY_NOT_FOUND)return ret;
+            break;
+         case LUT_SUCHE_NAMEN_KURZ:
+            if((ret=lut_suche_namen_kurz(txt,NULL,NULL,NULL,NULL,NULL))<0 && ret!=KEY_NOT_FOUND)return ret;
+            break;
+         case LUT_SUCHE_ORT:
+            if((ret=lut_suche_ort(txt,NULL,NULL,NULL,NULL,NULL))<0 && ret!=KEY_NOT_FOUND)return ret;
+            break;
+         case LUT_SUCHE_BLZ:
+            if((ret=lut_suche_blz(i1,i2,NULL,NULL,NULL,NULL,NULL))<0 && ret!=KEY_NOT_FOUND)return ret;
+            break;
+         case LUT_SUCHE_PLZ:
+            if((ret=lut_suche_plz(i1,i2,NULL,NULL,NULL,NULL,NULL))<0 && ret!=KEY_NOT_FOUND)return ret;
+            break;
+         case LUT_SUCHE_PZ:
+            if((ret=lut_suche_pz(i1,i2,NULL,NULL,NULL,NULL,NULL))<0 && ret!=KEY_NOT_FOUND)return ret;
+            break;
+         default:
+            break;
+      }
+   }
+   else
+      idx=idx-'a';
+
+   if(!a->suche[idx].such_typ && typ)a->anzahl++;
+   a->suche[idx].such_typ=typ;
+   a->suche[idx].suche_int1=i1;
+   a->suche[idx].suche_int2=i2;
+   if(txt){
+      if(!(a->suche[idx].suche_str=strdup(txt)))return ERROR_MALLOC;
+   }
+   else
+      a->suche[idx].suche_str=NULL;
+   return ret;
+}
+
+DLL_EXPORT int lut_suche(int such_id,char *such_cmd,UINT4 *such_cnt,UINT4 **filiale,UINT4 **blz)
+{
+   char *ptr;
+   int cnt,i,j,ret,typ,arr_cnt,last_blz,key_not_found,*s,*s1,*s2;
+   LUT_SUCHE *such_array;
+   LUT_SUCHERGEBNIS ergebnis;
+   LUT_SUCHE_ARR *suche;
+
+   if(such_id<0 || such_id>=last_lut_suche_idx || !lut_suche_arr[such_id])return LUT_SUCHE_INVALID_RSC;
+   suche=lut_suche_arr[such_id];
+   such_array=suche->suche;
+   cnt=suche->anzahl;
+   if(blz)*blz=NULL;    /* Initialisierung f¸r den Fehlerfall */
+   if(filiale)*filiale=NULL;
+   if(such_cnt)*such_cnt=0;
+   if((ret=init_blzf(NULL))<0)return ret;
+   if(cnt<1 || cnt>LUT_SUCHE_MAX_CNT)return LUT_SUCHE_INVALID_CNT;
+
+   for(i=key_not_found=0;i<LUT_SUCHE_MAX_CNT;i++){
+      switch(such_array[i].such_typ){
+         case LUT_SUCHE_VOLLTEXT:
+            if((ret=lut_suche_volltext(such_array[i].suche_str,NULL,NULL,NULL,
+                        &(ergebnis[i].cnt),&(ergebnis[i].start_idx),NULL,NULL))<0 && ret!=KEY_NOT_FOUND)return ret;
+            break;
+         case LUT_SUCHE_BIC:
+            if((ret=lut_suche_bic(such_array[i].suche_str,
+                        &(ergebnis[i].cnt),&(ergebnis[i].start_idx),NULL,NULL,NULL))<0 && ret!=KEY_NOT_FOUND)return ret;
+            break;
+         case LUT_SUCHE_NAMEN:
+            if((ret=lut_suche_namen(such_array[i].suche_str,
+                        &(ergebnis[i].cnt),&(ergebnis[i].start_idx),NULL,NULL,NULL))<0 && ret!=KEY_NOT_FOUND)return ret;
+            break;
+         case LUT_SUCHE_NAMEN_KURZ:
+            if((ret=lut_suche_namen_kurz(such_array[i].suche_str,
+                        &(ergebnis[i].cnt),&(ergebnis[i].start_idx),NULL,NULL,NULL))<0 && ret!=KEY_NOT_FOUND)return ret;
+            break;
+         case LUT_SUCHE_ORT:
+            if((ret=lut_suche_ort(such_array[i].suche_str,
+                        &(ergebnis[i].cnt),&(ergebnis[i].start_idx),NULL,NULL,NULL))<0 && ret!=KEY_NOT_FOUND)return ret;
+            break;
+         case LUT_SUCHE_BLZ:
+            if((ret=lut_suche_blz(such_array[i].suche_int1,such_array[i].suche_int2,
+                        &(ergebnis[i].cnt),&(ergebnis[i].start_idx),NULL,NULL,NULL))<0 && ret!=KEY_NOT_FOUND)return ret;
+            break;
+         case LUT_SUCHE_PLZ:
+            if((ret=lut_suche_plz(such_array[i].suche_int1,such_array[i].suche_int2,
+                        &(ergebnis[i].cnt),&(ergebnis[i].start_idx),NULL,NULL,NULL))<0 && ret!=KEY_NOT_FOUND)return ret;
+            break;
+         case LUT_SUCHE_PZ:
+            if((ret=lut_suche_pz(such_array[i].suche_int1,such_array[i].suche_int2,
+                        &(ergebnis[i].cnt),&(ergebnis[i].start_idx),NULL,NULL,NULL))<0 && ret!=KEY_NOT_FOUND)return ret;
+            break;
+         default:
+            ergebnis[i].cnt=0;
+            ergebnis[i].start_idx=NULL;
+            ret=0;
+            break;
+      }
+      if(ret==KEY_NOT_FOUND)key_not_found=1;
+   }
+   for(s=s1=s2=NULL,typ=SUCHE_STD,ptr=such_cmd;*ptr;ptr++){
+      if(*ptr=='+'){
+         if(typ==SUCHE_STD)
+            s=lut_suche_multiple_or(s,&s1,NULL);
+         else
+            s=lut_suche_multiple_not(s,&s1,NULL);
+         typ=SUCHE_STD;
+      }
+      else if(*ptr=='-'){
+         if(typ==SUCHE_STD)
+            s=lut_suche_multiple_or(s,&s1,NULL);
+         else
+            s=lut_suche_multiple_not(s,&s1,NULL);
+         typ=SUCHE_NOT;
+      }
+      else if(*ptr==' ')
+         continue;
+      else{
+         if(!isalpha(*ptr))return LUT_SUCHE_INVALID_CMD;
+         i=tolower(*ptr)-'a';
+         s1=lut_suche_multiple_and(s1,ergebnis[i].start_idx,ergebnis[i].cnt,NULL,0,NULL,&ret);
+         if(ret<0)return ret;
+      }
+   }
+   if(typ==SUCHE_STD)
+      s=lut_suche_multiple_or(s,&s1,&arr_cnt);
+   else
+      s=lut_suche_multiple_not(s,&s1,&arr_cnt);
+
+   if(s){
+      for(i=cnt=0;i<arr_cnt;i++)if(s[i])cnt++;
+      if(blz && !(*blz=malloc(cnt*4)))return ERROR_MALLOC;
+      if(filiale && !(*filiale=malloc(cnt*4)))return ERROR_MALLOC;
+      last_blz=-1;
+      if(suche->uniq){ /* hier muﬂ nicht mehr sortiert werden, da die BLZs schon sortiert sind */
+         for(i=j=cnt=0;i<arr_cnt;i++)if(s[i] && blz_f[i]!=last_blz){
+            cnt++;
+            last_blz=blz_f[i];
+            if(blz)(*blz)[j]=blz_f[i];
+            if(filiale)(*filiale)[j++]=zweigstelle_f[i];
+         }
+      }
+      else
+         for(i=j=0;i<arr_cnt;i++)if(s[i]){
+            if(blz)(*blz)[j]=blz_f[i];
+            if(filiale)(*filiale)[j++]=zweigstelle_f[i];
+         }
+      if(such_cnt)*such_cnt=cnt;
+      free(s);
+   }
+   if(key_not_found)
+      return SOME_KEYS_NOT_FOUND;
+   else
+      return OK;
+}
+
+/* Funktion lut_suche_multiple() +ßßß2 */
+DLL_EXPORT int lut_suche_multiple(char *such_str,int uniq,char *such_cmd,UINT4 *anzahl,UINT4 **zweigstellen,UINT4 **blz)
+{
+   char *ptr,*ptr1,*pi2,*such_text,such_cmd1[LUT_SUCHE_MAX_CNT+1];
+   int c,j,i1,i2,idx,ret,such_id,typ,genau,key_not_found;
+
+   if(anzahl)*anzahl=0;
+   if(blz)*blz=NULL;
+   if(such_cmd && !*such_cmd)such_cmd=NULL;
+   if(zweigstellen)*zweigstellen=NULL;
+   if((init_status&7)<7)return LUT2_NOT_INITIALIZED;
+   if(lut_id_status==FALSE)return LUT1_FILE_USED;
+   if(!such_str || !*such_str)return OK;
+   if((such_id=lut_suche_init(uniq))<0)return such_id;
+   if(!(such_text=strdup(such_str)))return ERROR_MALLOC;
+   key_not_found=0;
+   if(*(ptr=such_text)=='!'){
+      genau=1;
+      ptr++;  /* erstmal ignorieren, sp‰ter wieder einf¸gen */
+   }
+   else
+      genau=0;
+   while(!volltext_zeichen(UCPP &ptr))ptr++; /* f¸hrende Blanks etc. entfernen */
+   if(genau)*--ptr='!';    /* genau-Markierung wieder einf¸gen (u.U. an sp‰terer Position) */
+   for(c=0,j='a',ptr1=pi2=ptr;*ptr && j<='z';){
+      if(*ptr1=='!'){
+         genau=1;
+         ptr++;
+         ptr1++;
+      }
+      else
+         genau=0;
+
+      if(*(ptr+1)==':' && isascii(*ptr)){    /* Suchindex angegeben (a:...) */
+         idx=*ptr;
+         ptr+=2;
+         ptr1=pi2=ptr;
+      }
+      else
+         idx=j;
+      while(volltext_zeichen(UCPP &ptr))ptr++;
+      typ=LUT_SUCHE_VOLLTEXT;
+      i1=i2=0;
+      if(*ptr=='-'){    /* Bereich (f¸r numerische Suche) angegeben */
+         pi2=++ptr;
+         while(volltext_zeichen(UCPP &ptr))ptr++;
+      }
+      if(*ptr=='@'){    /* Suchfeld angegeben */
+         *ptr++=0;
+         switch(tolower(*ptr++)){
+            case 'b':
+               if(tolower(*ptr)=='l')
+                  typ=LUT_SUCHE_BLZ;
+               else if(tolower(*ptr)=='i')
+                  typ=LUT_SUCHE_BIC;
+               break;
+
+            case 'k':
+               typ=LUT_SUCHE_NAMEN_KURZ;
+               break;
+
+            case 'n':
+               typ=LUT_SUCHE_NAMEN;
+               break;
+
+            case 'o':
+               typ=LUT_SUCHE_ORT;
+               break;
+
+            case 'p':
+               if(tolower(*ptr)=='l')
+                  typ=LUT_SUCHE_PLZ;
+               else if(tolower(*ptr)=='z' || tolower(*ptr)=='r')
+                  typ=LUT_SUCHE_PZ;
+               break;
+
+            case 'v':
+               typ=LUT_SUCHE_VOLLTEXT;
+               break;
+
+            default:
+               break;
+         }
+         i1=atoi(ptr1);
+         i2=atoi(pi2);
+         while(volltext_zeichen(UCPP &ptr))ptr++;
+         while(*ptr && !volltext_zeichen(UCPP &ptr) && *ptr!='!')ptr++;
+      }
+      else
+         while(*ptr && !volltext_zeichen(UCPP &ptr) && *ptr!='!')*ptr++=0;
+      such_cmd1[c++]=idx;
+      if(genau)*--ptr1='!';    /* such_text wurde mit strdup() angelegt und darf ver‰ndert werden */
+      if((ret=lut_suche_set(such_id,idx,typ,i1,i2,ptr1))<0 && ret!=KEY_NOT_FOUND){
+         free(such_text);
+         lut_suche_free(such_id);
+         return ret;
+      }
+      if(ret==KEY_NOT_FOUND)key_not_found=1;
+      ptr1=ptr;
+      j++;
+   }
+   such_cmd1[c]=0;
+   ret=lut_suche(such_id,such_cmd?such_cmd:such_cmd1,anzahl,zweigstellen,blz);
+   lut_suche_free(such_id);
+   free(such_text);
+   if(key_not_found || ret==KEY_NOT_FOUND)
+      return SOME_KEYS_NOT_FOUND;
+   else
+      return ret;
+}
+
+/* cmp_suche_sort(): Sortierfunktion f¸r lut_suche_ort() +ßßß2 */
+static int *blz_suche_sort,*zw_suche_sort;   /* Hilfsvariablen */
+
+static int cmp_suche_sort(const void *ap,const void *bp)
+{
+   int a,b;
+
+   a=*(int*)ap;
+   b=*(int*)bp;
+   if(blz_suche_sort[a]!=blz_suche_sort[b])return blz_suche_sort[a]-blz_suche_sort[b];
+   if(zw_suche_sort[a]!=zw_suche_sort[b])return zw_suche_sort[a]-zw_suche_sort[b];
+   return a-b;
+}
+
+/* Funktion lut_suche_sort1() +ßßß2 */
+DLL_EXPORT int lut_suche_sort1(int anzahl,int *blz_base,int *zweigstellen_base,int *idx,int *anzahl_o,int **idx_op,int **cnt_op,int uniq)
+{
+   int i,j,last_idx,*idx_a,*cnt_o;
+#line 17560 "konto_check.lxx"
+
+   if(idx_op)*idx_op=NULL;
+   if(cnt_op)*cnt_op=NULL;
+   *anzahl_o=0;
+   if(!(idx_a=malloc(anzahl*sizeof(int))))return ERROR_MALLOC;
+   if(!(cnt_o=malloc(anzahl*sizeof(int))))return ERROR_MALLOC;
+   for(i=0;i<anzahl;i++){ /* initialisieren */
+      idx_a[i]=idx[i];
+      cnt_o[i]=1;
+   }
+   blz_suche_sort=blz_base;
+   zw_suche_sort=zweigstellen_base;
+//#error lock f¸r sort einf¸gen wegen globalem blz_suche_sort und zw_suche_xort oder besser spezifische Sortierroutinen
+   qsort(idx_a,anzahl,sizeof(int),cmp_suche_sort);
+   if(uniq){
+      for(last_idx=-1,i=j=0;i<anzahl;i++){
+         if(blz_base[idx_a[i]]==last_idx){
+            cnt_o[j-1]++;  /* j wurde bereits inkrementiert */
+            continue;
+         }
+         idx_a[j]=idx_a[i];
+         last_idx=blz_base[idx_a[i]];
+         j++;
+      }
+      if(!(idx_a=realloc(idx_a,j*sizeof(int))))return ERROR_MALLOC;
+      if(!(cnt_o=realloc(cnt_o,j*sizeof(int))))return ERROR_MALLOC;
+      *anzahl_o=j;
+   }
+   else
+      *anzahl_o=anzahl;
+   if(idx_op)
+      *idx_op=idx_a;
+   else
+      free(idx_a);
+   if(cnt_op)
+      *cnt_op=cnt_o;
+   else
+      free(cnt_o);
+   return OK;
+}
+
+/* Funktion lut_suche_sort2() +ßßß2 */
+DLL_EXPORT int lut_suche_sort2(int anzahl,int *blz,int *zweigstellen,int *anzahl_o,int **blz_op,int **zweigstellen_op,int **cnt_o,int uniq)
+{
+   int i,j,last_blz,*idx_a,*blz_o,*zweigstellen_o;
+
+   idx_a=malloc(anzahl*sizeof(int));
+   for(i=0;i<anzahl;i++)idx_a[i]=i; /* initialisieren */
+   blz_suche_sort=blz;
+   zw_suche_sort=zweigstellen;
+// #error lock f¸r sort einf¸gen wegen globalem blz_suche_sort und zw_suche_xort oder besser spezifische Sortierroutinen
+   qsort(idx_a,anzahl,sizeof(int),cmp_suche_sort);
+   blz_o=malloc(anzahl*sizeof(int));
+   zweigstellen_o=malloc(anzahl*sizeof(int));
+   if(uniq){
+      for(last_blz=-1,i=j=0;i<anzahl;i++){
+         if(blz[idx_a[i]]==last_blz)continue;
+         cnt_o[j]++;
+         blz_o[j]=blz[idx_a[i]];
+         zweigstellen_o[j++]=zweigstellen[idx_a[i]];
+         last_blz=blz[idx_a[i]];
+      }
+      fprintf(stderr,"cnt_o: %d\n",j);
+      if(!(blz_o=realloc(blz_o,j*sizeof(int))))return ERROR_MALLOC;
+      if(!(cnt_o=realloc(cnt_o,j*sizeof(int))))return ERROR_MALLOC;
+      *anzahl_o=j;
+   }
+   else{
+      for(i=0;i<anzahl;i++){
+         /************ HIER NOCH UNIQ EINBAUEN **************/
+         blz_o[i]=blz[idx_a[i]];
+         zweigstellen_o[i]=zweigstellen[idx_a[i]];
+      }
+      *anzahl_o=anzahl;
+   }
+   free(idx_a);
+   *blz_op=blz_o;
+   *zweigstellen_op=zweigstellen_o;
+   return OK;
+}
+
+/* Funktion lut_suche_volltext() +ßßß2 */
+DLL_EXPORT int lut_suche_volltext(char *such_wort,int *anzahl,int *base_name_idx,char ***base_name,
+      int *zweigstellen_anzahl,int **start_idx,int **zweigstellen_base,int **blz_base)
+{
+   const char *lut_name;
+   char *data,*ptr,*ptr1;
+   int i,j,k,lut_set,retval,unten;
+   UINT4 len;
+
+   if(anzahl)*anzahl=0;
+   if(zweigstellen_anzahl)*zweigstellen_anzahl=0;
+   if(base_name)*base_name=NULL;
+   if((init_status&7)<7)return LUT2_NOT_INITIALIZED;
+   if(lut_id_status==FALSE)return LUT1_FILE_USED;
+   if((retval=init_blzf(NULL))<0)return retval;
+   if(blz_base)*blz_base=blz_f;
+   if(zweigstellen_base)*zweigstellen_base=zweigstelle_f;
+
+   if(!volltext){ /* die Volltext-Suche wurde noch nicht initialisiert */
+         /* Dateinamen und Set der aktuellen Initialisierung holen */
+      lut_name=current_lutfile_name(&lut_set,NULL,&retval);
+      if(retval!=OK)return retval;   /* nicht initialisiert */
+
+         /* versuchen, die Blocks aus der LUT-Datei zu lesen */
+      retval=read_lut_block((char*)lut_name,LUT2_VOLLTEXT_TXT+(lut_set==2?100:0),&len,&volltext_data);
+      if(retval!=OK)return retval;   
+      ptr1=volltext_data+len; /* Ende des Buffers merken */
+      retval=read_lut_block((char*)lut_name,LUT2_VOLLTEXT_IDX+(lut_set==2?100:0),&len,&data);
+      if(retval!=OK)return retval;   
+      ptr=data;
+      C2UL(vt_cnt_uniq,ptr);
+      C2UL(vt_cnt,ptr);
+      if(!(volltext=malloc(vt_cnt*sizeof(char*)))){
+         FREE(volltext_data);
+         return ERROR_MALLOC;
+      }
+      if(!(volltext_start=malloc((vt_cnt_uniq+1)*sizeof(int)))){
+         FREE(volltext);
+         FREE(volltext_data);
+         return ERROR_MALLOC;
+      }
+      if(!(sort_volltext=malloc(vt_cnt_uniq*sizeof(int)))){
+         FREE(volltext);
+         FREE(volltext_data);
+         FREE(volltext_start);
+         return ERROR_MALLOC;
+      }
+      if(!(volltext_banken=malloc(vt_cnt*sizeof(int)))){
+         FREE(volltext);
+         FREE(volltext_data);
+         FREE(volltext_start);
+         FREE(sort_volltext);
+         return ERROR_MALLOC;
+      }
+
+         /* Volltext-Array mit Pointern auf die Daten f¸llen */
+      for(*volltext=ptr=volltext_data,i=1;ptr<ptr1 && i<vt_cnt_uniq;)if(!*ptr++)volltext[i++]=ptr;
+
+         /* Index-Arrays f¸llen */
+      for(i=j=0,ptr=data+8;i<vt_cnt_uniq;i++){
+         sort_volltext[i]=i;  /* eigentlich nur Dummy f¸r suche_str() */
+         volltext_start[i]=j;
+         C2UI(k,ptr);
+         j+=k;
+      }
+      volltext_start[i]=j;
+      for(i=0;i<vt_cnt;i++)C2UI(volltext_banken[i],ptr);
+      free(data);
+   }
+      /* einige h‰ufiger vorkommende Sonderzeichen (die f¸r die Volltextsuche ung¸ltig sind) testen */
+   for(ptr=such_wort;*ptr;)switch(*ptr++){
+      case '-':
+      case '\'':
+      case ',':
+      case '.':
+      case '+':
+      case '/':
+      case '&':
+      case '(':
+      case ')':
+         return LUT2_VOLLTEXT_INVALID_CHAR;
+      default:
+         break;
+   }
+   if(*(ptr=such_wort)=='!')ptr++;  /* ! am Wortanfang f¸r exakte Suche zulassen */
+   for(;*ptr;ptr++)if(!volltext_zeichen(UCPP &ptr))return LUT2_VOLLTEXT_SINGLE_WORD_ONLY;
+
+   if((retval=binary_search(such_wort,volltext,sort_volltext,vt_cnt_uniq,&unten,&vt_cnt))!=OK){
+      if(anzahl)*anzahl=0;
+      if(start_idx)*start_idx=NULL;
+      RETURN(retval);
+   }
+
+      /* die bin‰re Suche hat die Suchwˆrter im Array volltext[] gefunden; f¸r
+       * die R¸ckgabe m¸ssen diese Werte auf das Array volltext_banken[]
+       * umgesetzt werden (mittels des Arrays volltext_start[]).
+       */
+   if(anzahl)*anzahl=vt_cnt;
+   if(base_name_idx)*base_name_idx=unten;
+   if(zweigstellen_anzahl)*zweigstellen_anzahl=volltext_start[unten+vt_cnt]-volltext_start[unten];
+   if(start_idx)*start_idx=volltext_banken+volltext_start[unten];
+   if(base_name)*base_name=volltext;
+   return OK;
+}
+
+DLL_EXPORT int lut_suche_blz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstellen_base,int **base_name,int **blz_base)
+{
+   int i,cnt,ret;
+
+   if(anzahl)*anzahl=0;
+   if(such2 && such1>such2)return INVALID_SEARCH_RANGE;
+   if((init_status&7)<7)return LUT2_NOT_INITIALIZED;
+   if(lut_id_status==FALSE)return LUT1_FILE_USED;
+   if(!blz_f && (ret=init_blzf(NULL))<0)return ret;
+   if(base_name)*base_name=blz_f;
+   cnt=lut2_cnt;
+   if(!sort_blz){
+      if(!(sort_blz=malloc(cnt*sizeof(int))))return ERROR_MALLOC;
+      for(i=0;i<cnt;i++)sort_blz[i]=i;
+   }
+   if(blz_base)*blz_base=blz_f;
+   if(zweigstellen_base){
+         /* Dummy-Array f¸r die Zweigstellen anlegen (nur Nullen; f¸r die R¸ckgabe erforderlich) */
+      if(!zweigstelle_f && !(zweigstelle_f=calloc(cnt+10,sizeof(int))))return ERROR_MALLOC;
+      *zweigstellen_base=zweigstelle_f;
+   }
+   return suche_int1(such1,such2,anzahl,start_idx,zweigstellen_base,blz_base,&blz_f,&sort_blz,qcmp_blz,cnt,0);
+}
+
 /* Funktion lut_suche_bic() +ßßß2 */
-DLL_EXPORT int lut_suche_bic(char *such_name,int *anzahl,int **start_idx,int **zweigstelle_base,
+DLL_EXPORT int lut_suche_bic(char *such_name,int *anzahl,int **start_idx,int **zweigstellen_base,
       char ***base_name,int **blz_base)
 {
    if(anzahl)*anzahl=0;
@@ -18302,11 +19759,11 @@ DLL_EXPORT int lut_suche_bic(char *such_name,int *anzahl,int **start_idx,int **z
    if(lut_id_status==FALSE)return LUT1_FILE_USED;
    if(!bic)return LUT2_BIC_NOT_INITIALIZED;   
    if(base_name)*base_name=bic;
-   return suche_str(such_name,anzahl,start_idx,zweigstelle_base,blz_base,&bic,&sort_bic,qcmp_bic,LUT2_BIC_SORT);
+   return suche_str(such_name,anzahl,start_idx,zweigstellen_base,blz_base,&bic,&sort_bic,qcmp_bic,LUT2_BIC_SORT);
 }
 
 /* Funktion lut_suche_namen() +ßßß2 */
-DLL_EXPORT int lut_suche_namen(char *such_name,int *anzahl,int **start_idx,int **zweigstelle_base,
+DLL_EXPORT int lut_suche_namen(char *such_name,int *anzahl,int **start_idx,int **zweigstellen_base,
       char ***base_name,int **blz_base)
 {
    if(anzahl)*anzahl=0;
@@ -18314,11 +19771,11 @@ DLL_EXPORT int lut_suche_namen(char *such_name,int *anzahl,int **start_idx,int *
    if(lut_id_status==FALSE)return LUT1_FILE_USED;
    if(!name)return LUT2_NAME_NOT_INITIALIZED;   
    if(base_name)*base_name=name;
-   return suche_str(such_name,anzahl,start_idx,zweigstelle_base,blz_base,&name,&sort_name,qcmp_name,LUT2_NAME_SORT);
+   return suche_str(such_name,anzahl,start_idx,zweigstellen_base,blz_base,&name,&sort_name,qcmp_name,LUT2_NAME_SORT);
 }
 
 /* Funktion lut_suche_namen_kurz() +ßßß2 */
-DLL_EXPORT int lut_suche_namen_kurz(char *such_name,int *anzahl,int **start_idx,int **zweigstelle_base,
+DLL_EXPORT int lut_suche_namen_kurz(char *such_name,int *anzahl,int **start_idx,int **zweigstellen_base,
       char ***base_name,int **blz_base)
 {
    if(anzahl)*anzahl=0;
@@ -18326,11 +19783,11 @@ DLL_EXPORT int lut_suche_namen_kurz(char *such_name,int *anzahl,int **start_idx,
    if(lut_id_status==FALSE)return LUT1_FILE_USED;
    if(!name_kurz)return LUT2_NAME_KURZ_NOT_INITIALIZED;   
    if(base_name)*base_name=name_kurz;
-   return suche_str(such_name,anzahl,start_idx,zweigstelle_base,blz_base,&name_kurz,&sort_name_kurz,qcmp_name_kurz,LUT2_NAME_KURZ_SORT);
+   return suche_str(such_name,anzahl,start_idx,zweigstellen_base,blz_base,&name_kurz,&sort_name_kurz,qcmp_name_kurz,LUT2_NAME_KURZ_SORT);
 }
 
 /* Funktion lut_suche_ort() +ßßß2 */
-DLL_EXPORT int lut_suche_ort(char *such_name,int *anzahl,int **start_idx,int **zweigstelle_base,
+DLL_EXPORT int lut_suche_ort(char *such_name,int *anzahl,int **start_idx,int **zweigstellen_base,
       char ***base_name,int **blz_base)
 {
    if(anzahl)*anzahl=0;
@@ -18338,51 +19795,26 @@ DLL_EXPORT int lut_suche_ort(char *such_name,int *anzahl,int **start_idx,int **z
    if(lut_id_status==FALSE)return LUT1_FILE_USED;
    if(!ort)return LUT2_ORT_NOT_INITIALIZED;   
    if(base_name)*base_name=ort;
-   return suche_str(such_name,anzahl,start_idx,zweigstelle_base,blz_base,&ort,&sort_ort,qcmp_ort,LUT2_ORT_SORT);
-}
-
-/* Funktion lut_suche_blz() +ßßß2 */
-DLL_EXPORT int lut_suche_blz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstelle_base,int **base_name,int **blz_base)
-{
-   int cnt;
-
-   if(anzahl)*anzahl=0;
-   if(such2 && such1>such2)return INVALID_SEARCH_RANGE;
-   if((init_status&7)<7)return LUT2_NOT_INITIALIZED;
-   if(lut_id_status==FALSE)return LUT1_FILE_USED;
-   if(base_name)*base_name=blz;
-   cnt=lut2_cnt_hs;
-   if(blz_base)*blz_base=blz;
-   if(zweigstelle_base){
-         /* Dummy-Array f¸r die Zweigstellen anlegen (nur Nullen; f¸r die R¸ckgabe erforderlich) */
-      if(!zweigstelle_f1 && !(zweigstelle_f1=calloc(cnt+10,sizeof(int))))return ERROR_MALLOC;
-      *zweigstelle_base=zweigstelle_f1;
-   }
-   return suche_int1(such1,such2,anzahl,start_idx,zweigstelle_base,blz_base,&blz,&sort_blz,qcmp_blz,cnt,0);
+   return suche_str(such_name,anzahl,start_idx,zweigstellen_base,blz_base,&ort,&sort_ort,qcmp_ort,LUT2_ORT_SORT);
 }
 
 /* Funktion lut_suche_pz() +ßßß2 */
-DLL_EXPORT int lut_suche_pz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstelle_base,int **base_name,int **blz_base)
+DLL_EXPORT int lut_suche_pz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstellen_base,int **base_name,int **blz_base)
 {
-   int cnt;
+   int retval;
 
    if(anzahl)*anzahl=0;
    if(such2 && such1>such2)return INVALID_SEARCH_RANGE;
    if((init_status&7)<7)return LUT2_NOT_INITIALIZED;
    if(lut_id_status==FALSE)return LUT1_FILE_USED;
-   if(base_name)*base_name=pz_methoden;
-   cnt=lut2_cnt_hs;
-   if(blz_base)*blz_base=blz;
-   if(zweigstelle_base){
-         /* Dummy-Array f¸r die Zweigstellen anlegen (nur Nullen; f¸r die R¸ckgabe erforderlich) */
-      if(!zweigstelle_f1 && !(zweigstelle_f1=calloc(cnt+10,sizeof(int))))return ERROR_MALLOC;
-      *zweigstelle_base=zweigstelle_f1;
-   }
-   return suche_int1(such1,such2,anzahl,start_idx,zweigstelle_base,blz_base,&pz_methoden,&sort_pz_methoden,qcmp_pz_methoden,cnt,LUT2_PZ_SORT);
+   if(!pz_methoden)return LUT2_PZ_NOT_INITIALIZED;
+   retval=suche_int2(such1,such2,anzahl,start_idx,zweigstellen_base,blz_base,&pz_f,&sort_pz_f,qcmp_pz_f,LUT2_PZ_SORT,1);
+   if(base_name)*base_name=pz_f;
+   return retval;
 }
 
 /* Funktion lut_suche_plz() +ßßß2 */
-DLL_EXPORT int lut_suche_plz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstelle_base,int **base_name,int **blz_base)
+DLL_EXPORT int lut_suche_plz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstellen_base,int **base_name,int **blz_base)
 {
    if(anzahl)*anzahl=0;
    if(such2 && such1>such2)return INVALID_SEARCH_RANGE;
@@ -18390,7 +19822,7 @@ DLL_EXPORT int lut_suche_plz(int such1,int such2,int *anzahl,int **start_idx,int
    if(lut_id_status==FALSE)return LUT1_FILE_USED;
    if(!plz)return LUT2_PLZ_NOT_INITIALIZED;   
    if(base_name)*base_name=plz;
-   return suche_int2(such1,such2,anzahl,start_idx,zweigstelle_base,blz_base,&plz,&sort_plz,qcmp_plz,LUT2_PLZ_SORT);
+   return suche_int2(such1,such2,anzahl,start_idx,zweigstellen_base,blz_base,&plz,&sort_plz,qcmp_plz,LUT2_PLZ_SORT,0);
 }
 
 
@@ -19045,7 +20477,7 @@ static int convert_encoding(char **data,UINT4 *len)
 DLL_EXPORT const char *pz2str(int pz,int *ret)
 {
    if(ret){
-      if(pz>=139)
+      if(pz>=140)
          *ret=NOT_DEFINED;
       else
          *ret=OK;
@@ -19450,8 +20882,9 @@ DLL_EXPORT const char *pz2str(int pz,int *ret)
 
 DLL_EXPORT int lut_keine_iban_berechnung(char *iban_blacklist,char *lutfile,int set)
 {
-   char *ptr,*buffer,line[1024];
-   int *ibuffer,i,cnt,size,retval;
+   char *ptr,*ptr1,*dptr,*dptr1,*sptr,*buffer,line[1024];
+   int *ibuffer,i,size,retval,set_offset,fertig,bufsize;
+   UINT4 cnt;
    FILE *in,*lut;
    struct stat sbuf;
 
@@ -19482,11 +20915,40 @@ DLL_EXPORT int lut_keine_iban_berechnung(char *iban_blacklist,char *lutfile,int 
    }
    qsort(ibuffer,cnt,sizeof(int),cmp_int);
    if(!(ptr=buffer=calloc(cnt+10,sizeof(int))))return ERROR_MALLOC;
+   bufsize=(cnt+10)*sizeof(int);
 
       /* nun den Block in die LUT-Datei schreiben: zuerst die Anzahl, dann die BLZs */
    UL2C(cnt,ptr);
-   for(i=0;i<cnt;i++)UL2C(ibuffer[i],ptr);
-   retval=write_lut_block_int(lut,LUT2_OWN_IBAN+(set==2?SET_OFFSET:0),ptr-buffer,buffer);
+   if(set==2)
+      set_offset=SET_OFFSET;
+   else
+      set_offset=0;
+   for(i=0;i<(int)cnt;i++)UL2C(ibuffer[i],ptr);
+   retval=write_lut_block_int(lut,LUT2_OWN_IBAN+set_offset,ptr-buffer,buffer);
+   fflush(lut);
+
+      /* Info-Block holen und Blockliste aktualisieren (falls noch nicht geschehen) */
+   if(read_lut_block_int(lut,0,LUT2_INFO+set_offset,&cnt,&sptr)>0){
+      if(bufsize<(int)cnt+16 && !(buffer=realloc(buffer,cnt+16)))return ERROR_MALLOC;  /* buffer u.U. vergrˆﬂern */
+      for(fertig=i=0,ptr=sptr,dptr=buffer;i<(int)cnt && !fertig;){
+         for(dptr1=dptr;*ptr!='\n' && i<(int)cnt && !fertig;i++)*dptr++=*ptr++; /* eine Zeile holen */
+         *dptr=0;
+         if(*ptr=='\n')ptr++;
+         if(!strncmp(dptr1,"Enthaltene Felder:",18)){
+            if(!strcmp(dptr-10,", OWN_IBAN")){
+               fertig=1;   /* Block ist schon eingetragen, nicht ersetzen */
+               break;
+            }
+            else
+               for(ptr1=(char*)", OWN_IBAN";(*dptr=*ptr1++);dptr++);
+         }
+         *dptr++='\n';
+         i++;
+      }
+      free(sptr);
+   }
+      /* der Block wurde um 10 Byte vergrˆﬂert, daher cnt+10 Byte schreiben */
+   if(!fertig)write_lut_block_int(lut,LUT2_INFO+set_offset,cnt+10,buffer);
    fclose(in);
    fclose(lut);
    free(buffer);
@@ -19616,17 +21078,25 @@ XI kto_check_pz_dbg(char *pz,char *kto,char *blz,RETVAL *retvals)EXCLUDED
 XC kto_check_test_vars(char *txt,UINT4 i)EXCLUDED_S
 XI set_verbose_debug(int mode)EXCLUDED
 XCC pz2str(int pz,int *ret)EXCLUDED_S
-XI lut_suche_bic(char *such_name,int *anzahl,int **start_idx,int **zweigstelle_base,
+XI lut_suche_bic(char *such_name,int *anzahl,int **start_idx,int **zweigstellen_base,
       char ***base_name,int **blz_base)EXCLUDED
-XI lut_suche_namen(char *such_name,int *anzahl,int **start_idx,int **zweigstelle_base,
+XI lut_suche_namen(char *such_name,int *anzahl,int **start_idx,int **zweigstellen_base,
       char ***base_name,int **blz_base)EXCLUDED
-XI lut_suche_namen_kurz(char *such_name,int *anzahl,int **start_idx,int **zweigstelle_base,
+XI lut_suche_namen_kurz(char *such_name,int *anzahl,int **start_idx,int **zweigstellen_base,
       char ***base_name,int **blz_base)EXCLUDED
-XI lut_suche_ort(char *such_name,int *anzahl,int **start_idx,int **zweigstelle_base,
+XI lut_suche_ort(char *such_name,int *anzahl,int **start_idx,int **zweigstellen_base,
       char ***base_name,int **blz_base)EXCLUDED
-XI lut_suche_blz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstelle_base,int **base_name,int **blz_base)EXCLUDED
-XI lut_suche_pz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstelle_base,int **base_name,int **blz_base)EXCLUDED
-XI lut_suche_plz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstelle_base,int **base_name,int **blz_base)EXCLUDED
+XI lut_suche_blz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstellen_base,int **base_name,int **blz_base)EXCLUDED
+XI lut_suche_pz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstellen_base,int **base_name,int **blz_base)EXCLUDED
+XI lut_suche_plz(int such1,int such2,int *anzahl,int **start_idx,int **zweigstellen_base,int **base_name,int **blz_base)EXCLUDED
+XI lut_suche_volltext(char *such_wort,int *anzahl,int *base_name_idx,char ***base_name,int *zweigstellen_anzahl,int **start_idx,int **zweigstellen_base,int **blz_base)EXCLUDED
+XI lut_suche_init(int uniq)EXCLUDED
+XI lut_suche_free(int id)EXCLUDED
+XI lut_suche_set(int such_id,int idx,int typ,int i1,int i2,char *txt)EXCLUDED
+XI lut_suche(int such_id,char *such_cmd,UINT4 *such_cnt,UINT4 **filiale,UINT4 **blz)EXCLUDED
+XI lut_suche_multiple(char *such_str,int uniq,char *such_cmd,UINT4 *anzahl,UINT4 **zweigstellen,UINT4 **blz)EXCLUDED
+XI lut_suche_sort1(int anzahl,int *blz_base,int *zweigstellen_base,int *idx,int *anzahl_o,int **idx_op,int **cnt_op,int uniq)EXCLUDED
+XI lut_suche_sort2(int anzahl,int *blz,int *zweigstellen,int *anzahl_o,int **blz_op,int **zweigstellen_op,int **cnt_o,int uniq)EXCLUDED
 XI kto_check_init_default(char *lut_name,int block_id)EXCLUDED
 XI kto_check_default_keys(char ***keys,int *cnt)EXCLUDED
 XI kto_check_set_default(char *key,char *val)EXCLUDED

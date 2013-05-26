@@ -56,7 +56,7 @@
 
 #define RUNTIME_ERROR(error) do{ \
    snprintf(error_msg,511,"KontoCheck::%s, %s",kto_check_retval2txt_short(error),kto_check_retval2txt(error)); \
-   rb_raise(rb_eRuntimeError,error_msg); \
+   rb_raise(rb_eRuntimeError, "%s", error_msg); \
 }while(0)
 
 // Defining a space for information and references about the module to be stored internally
@@ -106,7 +106,7 @@ static void get_params_file(int argc,VALUE* argv,char *arg1s,int *arg1i,int *arg
       *(arg1s+len)=0;
    }
    else
-      rb_raise(rb_eRuntimeError,"Unable to convert given filename.");
+      rb_raise(rb_eRuntimeError, "%s", "Unable to convert given filename.");
 }
 
 /**
@@ -226,9 +226,9 @@ static void get_params(int argc,VALUE* argv,char *arg1s,char *arg2s,int *argi,in
          break;
       default:
          if(!optargs)
-            rb_raise(rb_eRuntimeError,"Unable to convert given blz.");
+            rb_raise(rb_eRuntimeError, "%s", "Unable to convert given blz.");
          else
-            rb_raise(rb_eRuntimeError,"Unable to convert given value.");
+            rb_raise(rb_eRuntimeError, "%s", "Unable to convert given value.");
          break;
    }
    if(optargs==2)switch(TYPE(arg2_rb)){  /* für konto_check(): kto holen */
@@ -243,7 +243,7 @@ static void get_params(int argc,VALUE* argv,char *arg1s,char *arg2s,int *argi,in
          snprintf(arg2s,16,"%5.0f",NUM2DBL(arg2_rb));
          break;
       default:
-         rb_raise(rb_eRuntimeError,"Unable to convert given kto.");
+         rb_raise(rb_eRuntimeError, "%s", "Unable to convert given kto.");
          break;
    }
 }
@@ -422,7 +422,7 @@ static VALUE generate_lutfile_rb(int argc,VALUE* argv,VALUE self)
       *(input_name+len)=0;
    }
    else
-      rb_raise(rb_eRuntimeError,"Unable to convert given input filename.");
+      rb_raise(rb_eRuntimeError, "%s", "Unable to convert given input filename.");
 
    if(TYPE(output_name_rb)==RUBY_T_STRING){
       strncpy(output_name,RSTRING_PTR(output_name_rb),FILENAME_MAX);
@@ -430,7 +430,7 @@ static VALUE generate_lutfile_rb(int argc,VALUE* argv,VALUE self)
       *(output_name+len)=0;
    }
    else
-      rb_raise(rb_eRuntimeError,"Unable to convert given output filename.");
+      rb_raise(rb_eRuntimeError, "%s", "Unable to convert given output filename.");
 
    if(NIL_P(user_info_rb)){
       *user_info=0;
@@ -441,7 +441,7 @@ static VALUE generate_lutfile_rb(int argc,VALUE* argv,VALUE self)
       *(user_info+len)=0;
    }
    else
-      rb_raise(rb_eRuntimeError,"Unable to convert given user_info string.");
+      rb_raise(rb_eRuntimeError, "%s", "Unable to convert given user_info string.");
 
    if(NIL_P(gueltigkeit_rb)){
       *gueltigkeit=0;
@@ -452,7 +452,7 @@ static VALUE generate_lutfile_rb(int argc,VALUE* argv,VALUE self)
       *(gueltigkeit+len)=0;
    }
    else
-      rb_raise(rb_eRuntimeError,"Unable to convert given gueltigkeit string.");
+      rb_raise(rb_eRuntimeError, "%s", "Unable to convert given gueltigkeit string.");
 
    if(NIL_P(felder_rb))
       felder=DEFAULT_LUT_FIELDS_NUM;
@@ -608,7 +608,7 @@ static VALUE lut_info_rb(int argc,VALUE* argv,VALUE self)
   ****************************************************************************/
 
 static VALUE load_bank_data(VALUE self, VALUE path_rb) {
-   rb_raise(rb_eRuntimeError, "Perhaps you used the old interface of konto_check.\n"
+   rb_raise(rb_eRuntimeError, "%s", "Perhaps you used the old interface of konto_check.\n"
          "Use KontoCheck::init() to initialize the library\n"
          "and check the order of function arguments for konto_test(blz,kto)");
 }

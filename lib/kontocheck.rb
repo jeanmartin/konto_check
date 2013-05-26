@@ -1,0 +1,1 @@
+require 'konto_check'

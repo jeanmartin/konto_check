@@ -31,6 +31,7 @@ Gem::Specification.new do |s|
     "init.rb",
     "kontocheck.gemspec",
     "lib/konto_check.rb",
+    "lib/kontocheck.rb",
     "test/helper.rb",
     "test/test_konto_check.rb"
   ]

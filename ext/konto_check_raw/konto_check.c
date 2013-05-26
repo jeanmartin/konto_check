@@ -48,9 +48,9 @@
 
 /* Definitionen und Includes  */
 #ifndef VERSION
-#define VERSION "4.2"
+#define VERSION "4.4"
 #endif
-#define VERSION_DATE "2012-10-24"
+#define VERSION_DATE "2013-02-02"
 
 #ifndef INCLUDE_KONTO_CHECK_DE
 #define INCLUDE_KONTO_CHECK_DE 1
@@ -14102,7 +14102,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
 /* Berechnung nach der Methode C6 +§§§4 */
 /*
  * ######################################################################
- * #   Berechnung nach der Methode C6  (geändert zum 6. Juni 2011)      #
+ * #   Berechnung nach der Methode C6  (letze Änderung 4.3.2013)        #
  * ######################################################################
  * # Modulus 10, Gewichtung 1, 2, 1, 2, 1, 2, 1, 2                      #
  * #                                                                    #
@@ -14111,12 +14111,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
  * # 10-stellig darzustellen. Die 10. Stelle der Konto-nummer ist die   #
  * # Prüfziffer.                                                        #
  * #                                                                    #
- * # Kontonummern, die an der 1. Stelle von links der 10-stelligen      #
- * # Kontonummer einen der Wert 4 oder 8 beinhalten sind falsch.        #
- * #                                                                    #
- * # Kontonummern, die an der 1. Stelle von links der 10-stelligen      #
- * # Kontonummer einen der Werte 0, 1, 2, 3, 5, 6, 7 oder 9 beinhalten  #
- * # sind wie folgt zu prüfen:                                          #
+ * # Alle Kontonummern sind wie folgt zu prüfen:                        #
  * #                                                                    #
  * # Für die Berechnung der Prüfziffer werden die Stellen 2 bis 9 der   #
  * # Kontonummer verwendet. Diese Stellen sind links um eine Zahl       #
@@ -14130,9 +14125,11 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
  * #            1          4451981                                      #
  * #            2          4451992                                      #
  * #            3          4451993                                      #
+ * #            4          4344992                                      #
  * #            5          4344990                                      #
  * #            6          4344991                                      #
  * #            7          5499570                                      #
+ * #            8          4451994                                      #
  * #            9          5499579                                      #
  * #                                                                    #
  * # Die Berechnung und mögliche Ergebnisse entsprechen der Methode 00. #
@@ -14157,9 +14154,15 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
             case '1': pz=33; break;
             case '2': pz=36; break;
             case '3': pz=38; break; /* neu zum 7.6.2010 */
-            case '5': pz=33; break; /* neu zum 6.6.2011 */
-            case '6': pz=34; break; /* neu zum 6.6.2011 */
+#if PZ_METHODEN_2013_03_04
+            case '4': pz=45; break; /* neu zum 4.3.2013 */
+#endif
+            case '5': pz=41; break; /* neu zum 6.6.2011 */
+            case '6': pz=43; break; /* neu zum 6.6.2011 */
             case '7': pz=31; break;
+#if PZ_METHODEN_2013_03_04
+            case '8': pz=40; break; /* neu zum 4.3.2013 */
+#endif
             case '9': pz=40; break;
             default: return INVALID_KTO;
          }
@@ -14539,7 +14542,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
 /*  Berechnung nach der Methode D1 +§§§4 */
 /*
  * ######################################################################
- * #   Berechnung nach der Methode D1 (geändert zum 5.9.2011)           #
+ * #   Berechnung nach der Methode D1 (letzte Änderung 4.3.2013)        #
  * ######################################################################
  * # Modulus 10, Gewichtung 1, 2, 1, 2, 1, 2, 1, 2                      #
  * #                                                                    #
@@ -14549,11 +14552,11 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
  * # Prüfziffer.                                                        #
  * #                                                                    #
  * # Kontonummern, die an der 1. Stelle von links der 10-stelligen      #
- * # Kontonummer einen der Wert 7 oder 8 beinhalten sind falsch.        #
+ * # Kontonummer den Wert 8 enthalten sind falsch.                      #
  * #                                                                    #
  * # Kontonummern, die an der 1. Stelle von links der 10-stelligen      #
- * # Kontonummer einen der Werte 0, 1, 2, 3, 4, 5, 6 oder 9 beinhalten  #
- * # sind wie folgt zu prüfen:                                          #
+ * # Kontonummer einen der Werte 0, 1, 2, 3, 4, 5, 6, 7 oder 9          #
+ * # beinhalten sind wie folgt zu prüfen:                               #
  * #                                                                    #
  * # Für die Berechnung der Prüfziffer werden die Stellen 2 bis 9 der   #
  * # Kontonummer von links verwendet. Diese Stellen sind links um eine  #
@@ -14570,6 +14573,7 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
  * #                 4                  4363384                         #
  * #                 5                  4363385                         #
  * #                 6                  4363386                         #
+ * #                 7                  4363387                         #
  * #                 9                  4363389                         #
  * #                                                                    #
  * # Die Berechnung und mögliche Ergebnisse entsprechen der             #
@@ -14590,7 +14594,11 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
             retvals->pz_methode=131;
          }
 #endif
+#if PZ_METHODEN_2013_03_04
+         if(*kto=='8')return INVALID_KTO;
+#else
          if(*kto=='7' || *kto=='8')return INVALID_KTO;
+#endif
          pz=31;
 
 #ifdef __ALPHA
@@ -15444,6 +15452,58 @@ static int kto_check_int(char *x_blz,int pz_methode,char *kto)
             + (kto[8]-'0') * 3;
 
          MOD_10_320;   /* pz%=10 */
+         if(pz)pz=10-pz;
+         CHECK_PZ10;
+
+/* Berechnungsmethoden E0 bis E9 +§§§3
+   Berechnung nach der Methode E0 +§§§4 */
+/*
+ * ######################################################################
+ * #               Berechnung nach der Methode E0                       #
+ * ######################################################################
+ * # Modulus 10, Gewichtung 2, 1, 2, 1, 2, 1, 2, 1, 2                   #
+ * # Die Stellen der Kontonummer sind von rechts nach links mit den     #
+ * # Ziffern 2, 1, 2, 1, 2 usw. zu multiplizieren. Die jeweiligen       #
+ * # Produkte werden addiert, nachdem jeweils aus den zweistelligen     #
+ * # Produkten die Quersumme gebildet wurde (z. B. Produkt 18 =         #
+ * # Quersumme 9) plus den Wert 7. Nach der Addition bleiben außer      #
+ * # der Einerstelle alle anderen Stellen unberücksichtigt. Die         #
+ * # Einerstelle wird von dem Wert 10 subtrahiert. Das Ergebnis ist     #
+ * # die Prüfziffer (10. Stelle der Kontonummer).                       #
+ * ######################################################################
+ */
+
+      case 140:
+#if DEBUG>0
+         if(retvals){
+            retvals->methode="E0";
+            retvals->pz_methode=140;
+         }
+#endif
+
+            /* Das Verfahren entspricht (bis auf die zusätzliche 7) genau dem
+             * Verfahren 00; der Programmcode ist auch von diesem kopiert.
+             */
+#ifdef __ALPHA
+         pz = ((kto[0]<'5') ? (kto[0]-'0')*2 : (kto[0]-'0')*2-9)
+            +  (kto[1]-'0')
+            + ((kto[2]<'5') ? (kto[2]-'0')*2 : (kto[2]-'0')*2-9)
+            +  (kto[3]-'0')
+            + ((kto[4]<'5') ? (kto[4]-'0')*2 : (kto[4]-'0')*2-9)
+            +  (kto[5]-'0')
+            + ((kto[6]<'5') ? (kto[6]-'0')*2 : (kto[6]-'0')*2-9)
+            +  (kto[7]-'0')
+            + ((kto[8]<'5') ? (kto[8]-'0')*2 : (kto[8]-'0')*2-9);
+#else
+         pz=(kto[1]-'0')+(kto[3]-'0')+(kto[5]-'0')+(kto[7]-'0');
+         if(kto[0]<'5')pz+=(kto[0]-'0')*2; else pz+=(kto[0]-'0')*2-9;
+         if(kto[2]<'5')pz+=(kto[2]-'0')*2; else pz+=(kto[2]-'0')*2-9;
+         if(kto[4]<'5')pz+=(kto[4]-'0')*2; else pz+=(kto[4]-'0')*2-9;
+         if(kto[6]<'5')pz+=(kto[6]-'0')*2; else pz+=(kto[6]-'0')*2-9;
+         if(kto[8]<'5')pz+=(kto[8]-'0')*2; else pz+=(kto[8]-'0')*2-9;
+#endif
+         pz+=7;
+         MOD_10_80;   /* pz%=10 */
          if(pz)pz=10-pz;
          CHECK_PZ10;
 
@@ -19539,7 +19599,7 @@ static int cmp_suche_sort(const void *ap,const void *bp)
 DLL_EXPORT int lut_suche_sort1(int anzahl,int *blz_base,int *zweigstellen_base,int *idx,int *anzahl_o,int **idx_op,int **cnt_op,int uniq)
 {
    int i,j,last_idx,*idx_a,*cnt_o;
-#line 17560 "konto_check.lxx"
+#line 17614 "konto_check.lxx"
 
    if(idx_op)*idx_op=NULL;
    if(cnt_op)*cnt_op=NULL;
@@ -20477,7 +20537,7 @@ static int convert_encoding(char **data,UINT4 *len)
 DLL_EXPORT const char *pz2str(int pz,int *ret)
 {
    if(ret){
-      if(pz>=140)
+      if(pz>=141)
          *ret=NOT_DEFINED;
       else
          *ret=OK;

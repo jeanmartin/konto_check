@@ -81,6 +81,13 @@
 
 #define FLESSA_KORREKTUR 1
 
+/* Zum Gueltigkeitstermin 4. Maerz 2013 erfolgen Aenderungen der
+ * Pruefzifferberechnungsmethoden C6 und D1; mit dem folgenden Makro werden
+ * diese Änderungen aktiviert.
+ */
+#define PZ_METHODEN_2013_03_04 1
+
+
 /* Das Makro DEFAULT_ENCODING legt die Ausgabe-Kodierung für die Funktion
  * kto_check_retval2txt() und die Blocks Name, Kurzname und Ort aus der
  * LUT-Datei fest. Die folgenden Werte sind möglich:

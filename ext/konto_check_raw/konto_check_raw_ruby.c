@@ -677,6 +677,26 @@ static VALUE iban_check_rb(int argc,VALUE* argv,VALUE self)
 }
 
 /**
+ * KontoCheck::iban_gen(<blz>,<kto>)
+ *
+ * determine the IBAN for a given german kto and blz
+ * Use with caution and do not rely on the result.
+ *
+ */
+
+static VALUE iban_gen_rb(int argc,VALUE* argv,VALUE self)
+{
+   char *iban,error_msg[512],blz[10],kto[16];
+   int retval;
+   get_params(argc,argv,blz,kto,NULL,2);
+
+   iban = iban_gen(blz,kto, &retval);
+
+   if(iban == 0) RUNTIME_ERROR(retval);
+   return rb_str_new2(iban);
+}
+
+/**
  * KontoCheck::ipi_gen(<zweck>)
  *
  * determine the BIC for a given (german) IBAN
@@ -1481,6 +1501,7 @@ void Init_konto_check_raw()
    rb_define_module_function(KontoCheck,"retval2html",retval2html_rb,1);
    rb_define_module_function(KontoCheck,"retval2utf8",retval2utf8_rb,1);
    rb_define_module_function(KontoCheck,"generate_lutfile",generate_lutfile_rb,-1);
+   rb_define_module_function(KontoCheck,"generate_iban",iban_gen_rb,-1);
    rb_define_module_function(KontoCheck,"iban_check",iban_check_rb,-1);
    rb_define_module_function(KontoCheck,"iban2bic",iban2bic_rb,-1);
    rb_define_module_function(KontoCheck,"ipi_gen",ipi_gen_rb,-1);

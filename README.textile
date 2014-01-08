@@ -5,6 +5,8 @@ Check whether a certain bic/account-no-combination can possibly be valid for a G
 It uses the C library konto_check (see http://sourceforge.net/projects/kontocheck/) by
 Michael Plugge.
 
+Added KontoCheck::generate_iban(blz,kto) within this fork.
+
 h2. Example
 
 An example tends to tell more than a 1000 words:
@@ -22,6 +24,9 @@ true
 
 >> KontoCheck::konto_check?("52250030", "52002")
 false
+
+>> KontoCheck::generate_iban('52250030','52001')
+"DE46 5225 0030 0000 0520 01"
 
 # ISO-8859-1 encoded name of bank
 >> KontoCheck::bank_name("10010010")

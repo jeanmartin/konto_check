@@ -56,6 +56,10 @@ module KontoCheck
       KontoCheckRaw::generate_lutfile(*args)
     end
 
+    def generate_iban(*args)
+      KontoCheckRaw::generate_iban(*args)
+    end
+
     def init(*args)
       KontoCheckRaw::init(*args)
     end
